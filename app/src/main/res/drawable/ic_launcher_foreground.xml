@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Hexagon Crest Shield -->
+    <path
+        android:pathData="M54,20 L84,36 L84,72 L54,88 L24,72 L24,36 Z"
+        android:strokeWidth="3.2"
+        android:strokeColor="#F59E0B">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="24"
+                android:startY="20"
+                android:endX="84"
+                android:endY="88"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#40F59E0B" />
+                <item android:offset="1.0" android:color="#4006B6D4" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Inner Neon Cyan Border -->
+    <path
+        android:pathData="M54,26 L78,39 L78,69 L54,82 L30,69 L30,39 Z"
+        android:strokeWidth="1.6"
+        android:strokeColor="#06B6D4"
+        android:fillColor="#00000000" />
+
+    <!-- Crown Points -->
+    <path
+        android:pathData="M44,35 L50,41 L54,30 L58,41 L64,35 L62,47 L46,47 Z"
+        android:fillColor="#FBBF24" />
+
+    <!-- Stylized Letter 'A' -->
+    <path
+        android:pathData="M54,44 L44,69 L49,69 L51.5,62 L56.5,62 L59,69 L64,69 Z M54,52 L55.5,58 L52.5,58 Z"
+        android:fillColor="#FFFFFF" />
+
+    <!-- '23' Gold/Cyan Bar -->
+    <path
+        android:pathData="M38,71 L70,71 L67,77 L41,77 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="38"
+                android:startY="71"
+                android:endX="70"
+                android:endY="77"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#F59E0B" />
+                <item android:offset="1.0" android:color="#06B6D4" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Sparkle Star -->
+    <path
+        android:pathData="M54,79 L55.5,82 L59,82.5 L56.5,84.5 L57.2,88 L54,86 L50.8,88 L51.5,84.5 L49,82.5 L52.5,82 Z"
+        android:fillColor="#FBBF24" />
+</vector>

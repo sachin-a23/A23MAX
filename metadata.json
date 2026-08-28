@@ -1,0 +1,6 @@
+{
+  "name": "A23MAX",
+  "description": "A23MAX - Advanced Market OTC Prediction, Formula Calculator, Historical Analysis, and Live Data Sync.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

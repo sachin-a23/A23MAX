@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+
+    <!-- Dark Cyber Shield Hexagon Background -->
+    <path
+        android:pathData="M60,10 L104,32 L104,88 L60,110 L16,88 L16,32 Z"
+        android:strokeWidth="3.5"
+        android:strokeColor="#F59E0B">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="16"
+                android:startY="10"
+                android:endX="104"
+                android:endY="110"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FF0D1527" />
+                <item android:offset="0.5" android:color="#FF162238" />
+                <item android:offset="1.0" android:color="#FF0A0F1D" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Inner Neon Cyan Border -->
+    <path
+        android:pathData="M60,18 L96,36 L96,84 L60,102 L24,84 L24,36 Z"
+        android:strokeWidth="1.8"
+        android:strokeColor="#06B6D4"
+        android:fillColor="#00000000" />
+
+    <!-- Top Crown Emblem Points -->
+    <path
+        android:pathData="M44,32 L52,40 L60,26 L68,40 L76,32 L74,48 L46,48 Z"
+        android:fillColor="#FBBF24" />
+
+    <!-- Crown Jewels Sparkles -->
+    <path
+        android:pathData="M60,24 L61.5,27 L64,28 L61.5,29 L60,32 L58.5,29 L56,28 L58.5,27 Z"
+        android:fillColor="#38BDF8" />
+
+    <!-- Stylized Letter 'A' Centerpiece -->
+    <path
+        android:pathData="M60,46 L46,80 L53,80 L56.5,71 L63.5,71 L67,80 L74,80 Z M60,57 L62.5,65 L57.5,65 Z"
+        android:fillColor="#FFFFFF" />
+
+    <!-- Number '23' Futuristic Badge Bar -->
+    <path
+        android:pathData="M38,84 L82,84 L78,92 L42,92 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="38"
+                android:startY="84"
+                android:endX="82"
+                android:endY="92"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#F59E0B" />
+                <item android:offset="1.0" android:color="#06B6D4" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- 'MAX' Star Accent -->
+    <path
+        android:pathData="M60,95 L61.8,99 L66,99.8 L62.8,102.5 L63.8,106.8 L60,104.5 L56.2,106.8 L57.2,102.5 L54,99.8 L58.2,99 Z"
+        android:fillColor="#FBBF24" />
+
+</vector>
