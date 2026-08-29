@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "912335373079",
+    "project_id": "a23max-ecbe3",
+    "storage_bucket": "a23max-ecbe3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:912335373079:android:13532e98ba4c98136aad52",
+        "android_client_info": {
+          "package_name": "com.aistudio.a23max.kalyan"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB4fYIoc-WrcB4KibQCYt8yqW47kiEQuGs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

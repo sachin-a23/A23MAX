@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="160dp"
+    android:height="160dp"
+    android:viewportWidth="160"
+    android:viewportHeight="160">
+
+    <!-- Circle Clip Background with Radiant Cyber Aura -->
+    <path
+        android:pathData="M80,80 m-78,0 a78,78 0 1,0 156,0 a78,78 0 1,0 -156,0">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:centerX="80"
+                android:centerY="80"
+                android:gradientRadius="78"
+                android:type="radial">
+                <item android:offset="0.0" android:color="#FF1E293B" />
+                <item android:offset="0.7" android:color="#FF0F172A" />
+                <item android:offset="1.0" android:color="#FF070C16" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Warm Studio Portrait Lighting Aura -->
+    <path
+        android:pathData="M80,65 m-45,0 a45,45 0 1,0 90,0 a45,45 0 1,0 -90,0">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:centerX="80"
+                android:centerY="65"
+                android:gradientRadius="45"
+                android:type="radial">
+                <item android:offset="0.0" android:color="#44FBBF24" />
+                <item android:offset="0.6" android:color="#2238BDF8" />
+                <item android:offset="1.0" android:color="#00000000" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Vibrant Cyan Blue & Black Jacket Shoulders & Collar (Matching Owner's signature blue jacket) -->
+    <path
+        android:pathData="M30,155 C32,130 50,118 70,115 L90,115 C110,118 128,130 130,155 Z"
+        android:fillColor="#06B6D4" />
+
+    <!-- Jacket Black High Collar & Contrast Panels -->
+    <path
+        android:pathData="M52,116 L65,135 L95,135 L108,116 L92,108 L68,108 Z"
+        android:fillColor="#0F172A" />
+
+    <!-- Jacket Collar Zipper Accent -->
+    <path
+        android:pathData="M80,118 L80,155"
+        android:strokeWidth="2.5"
+        android:strokeColor="#38BDF8" />
+
+    <!-- Neck with Natural Skin Tone -->
+    <path
+        android:pathData="M68,90 L92,90 L90,112 L70,112 Z"
+        android:fillColor="#E0AC69" />
+
+    <!-- Head & Face Structure -->
+    <path
+        android:pathData="M54,58 C54,42 66,35 80,35 C94,35 106,42 106,58 C106,78 96,96 80,96 C64,96 54,78 54,58 Z"
+        android:fillColor="#F1C27D" />
+
+    <!-- Ears -->
+    <path
+        android:pathData="M50,56 C48,52 49,66 54,68 Z"
+        android:fillColor="#E0AC69" />
+    <path
+        android:pathData="M110,56 C112,52 111,66 106,68 Z"
+        android:fillColor="#E0AC69" />
+
+    <!-- Voluminous Textured Modern Hairstyle (Black with styled sweep) -->
+    <path
+        android:pathData="M48,50 C46,30 58,16 80,15 C100,14 114,28 112,50 C110,38 102,26 80,24 C60,24 50,38 48,50 Z"
+        android:fillColor="#111827" />
+    <path
+        android:pathData="M52,38 C56,22 72,18 84,20 C96,22 108,30 110,44 C104,32 94,28 82,28 C68,28 58,34 52,38 Z"
+        android:fillColor="#1F2937" />
+
+    <!-- Groomed Eyebrows -->
+    <path
+        android:pathData="M60,50 Q68,47 75,50"
+        android:strokeWidth="2.5"
+        android:strokeColor="#111827"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M85,50 Q92,47 100,50"
+        android:strokeWidth="2.5"
+        android:strokeColor="#111827"
+        android:strokeLineCap="round" />
+
+    <!-- Friendly Confident Eyes -->
+    <path
+        android:pathData="M63,55 Q68,52 73,55 Q68,58 63,55 Z"
+        android:fillColor="#111827" />
+    <path
+        android:pathData="M68,54.5 m-1.5,0 a1.5,1.5 0 1,0 3,0 a1.5,1.5 0 1,0 -3,0"
+        android:fillColor="#FFFFFF" />
+
+    <path
+        android:pathData="M87,55 Q92,52 97,55 Q92,58 87,55 Z"
+        android:fillColor="#111827" />
+    <path
+        android:pathData="M92,54.5 m-1.5,0 a1.5,1.5 0 1,0 3,0 a1.5,1.5 0 1,0 -3,0"
+        android:fillColor="#FFFFFF" />
+
+    <!-- Nose -->
+    <path
+        android:pathData="M80,54 L78,68 L84,68"
+        android:strokeWidth="1.8"
+        android:strokeColor="#C68642"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- Groomed Mustache & Full Beard (Matching Owner photo) -->
+    <path
+        android:pathData="M70,74 Q80,72 90,74 Q80,80 70,74 Z"
+        android:fillColor="#111827" />
+    <path
+        android:pathData="M58,64 C58,86 68,96 80,96 C92,96 102,86 102,64 C99,78 92,90 80,90 C68,90 61,78 58,64 Z"
+        android:fillColor="#111827" />
+
+    <!-- Smile Expression Accent -->
+    <path
+        android:pathData="M74,78 Q80,82 86,78"
+        android:strokeWidth="1.5"
+        android:strokeColor="#C68642"
+        android:strokeLineCap="round" />
+
+    <!-- Gold Owner Crown Badge in bottom right corner -->
+    <path
+        android:pathData="M128,128 m-18,0 a18,18 0 1,0 36,0 a18,18 0 1,0 -36,0"
+        android:fillColor="#0F172A" />
+    <path
+        android:pathData="M128,128 m-16,0 a16,16 0 1,0 32,0 a16,16 0 1,0 -32,0"
+        android:fillColor="#F59E0B" />
+    <path
+        android:pathData="M118,134 L122,126 L128,131 L134,126 L138,134 Z"
+        android:fillColor="#0F172A" />
+</vector>

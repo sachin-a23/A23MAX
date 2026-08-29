@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="360dp"
+    android:height="120dp"
+    android:viewportWidth="360"
+    android:viewportHeight="120">
+
+    <!-- Background Rich Cyber Gradient -->
+    <path
+        android:pathData="M0,0 L360,0 L360,120 L0,120 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="0"
+                android:startY="0"
+                android:endX="360"
+                android:endY="120"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FF091326" />
+                <item android:offset="0.45" android:color="#FF131F3A" />
+                <item android:offset="0.8" android:color="#FF1C1138" />
+                <item android:offset="1.0" android:color="#FF0B1020" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Top & Bottom Golden Border Lines -->
+    <path
+        android:pathData="M0,2 L360,2"
+        android:strokeWidth="2"
+        android:strokeColor="#F59E0B" />
+    <path
+        android:pathData="M0,118 L360,118"
+        android:strokeWidth="1.5"
+        android:strokeColor="#06B6D4" />
+
+    <!-- Ambient Neon Circles -->
+    <path
+        android:pathData="M40,60 m-45,0 a45,45 0 1,0 90,0 a45,45 0 1,0 -90,0">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:centerX="40"
+                android:centerY="60"
+                android:gradientRadius="45"
+                android:type="radial">
+                <item android:offset="0.0" android:color="#44F59E0B" />
+                <item android:offset="1.0" android:color="#00000000" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <path
+        android:pathData="M320,60 m-50,0 a50,50 0 1,0 100,0 a50,50 0 1,0 -100,0">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:centerX="320"
+                android:centerY="60"
+                android:gradientRadius="50"
+                android:type="radial">
+                <item android:offset="0.0" android:color="#33A855F7" />
+                <item android:offset="1.0" android:color="#00000000" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Left Emblem Shield -->
+    <path
+        android:pathData="M50,20 L80,34 L80,76 L50,92 L20,76 L20,34 Z"
+        android:strokeWidth="2.5"
+        android:strokeColor="#FBBF24">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="20"
+                android:startY="20"
+                android:endX="80"
+                android:endY="92"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FF1E293B" />
+                <item android:offset="1.0" android:color="#FF0F172A" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Crown inside shield -->
+    <path
+        android:pathData="M38,42 L44,48 L50,36 L56,48 L62,42 L60,54 L40,54 Z"
+        android:fillColor="#FBBF24" />
+
+    <!-- A23 inside shield -->
+    <path
+        android:pathData="M50,58 L42,76 L48,76 L50,71 L50,71 L52,76 L58,76 Z M50,65 L47,70 L53,70 Z"
+        android:fillColor="#FFFFFF" />
+
+    <!-- Golden Star Sparkles -->
+    <path
+        android:pathData="M100,28 L102,32 L106,34 L102,36 L100,40 L98,36 L94,34 L98,32 Z"
+        android:fillColor="#FBBF24" />
+
+    <path
+        android:pathData="M340,30 L341.5,33 L345,34.5 L341.5,36 L340,39 L338.5,36 L335,34.5 L338.5,33 Z"
+        android:fillColor="#38BDF8" />
+
+    <!-- Circuit grid lines -->
+    <path
+        android:pathData="M95,60 L240,60"
+        android:strokeWidth="1"
+        android:strokeColor="#22F59E0B" />
+    <path
+        android:pathData="M240,60 L260,40 L330,40"
+        android:strokeWidth="1"
+        android:strokeColor="#2206B6D4" />
+</vector>

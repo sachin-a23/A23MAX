@@ -16,7 +16,10 @@ data class CalculationResult(
     val step3Formula: String,
     val otcDigits: List<Int>,
     val superJodis: List<String>,
-    val pannes: List<String>
+    val pannes: List<String>,
+    val vipMasterJodis: List<String> = emptyList(),
+    val allCrossJodis: List<String> = emptyList(),
+    val dominantGap: Int = 2
 )
 
 object FormulaCalculator {
@@ -176,31 +179,31 @@ object FormulaCalculator {
             fillSeed = (fillSeed + 3) % 10
         }
 
-        val finalOtc = otcDigits.take(config.targetOtcCount.coerceIn(2, 6))
-
-        // Super Jodi pairs
-        val superJodis = mutableListOf<String>()
-        if (finalOtc.size >= 2) {
-            val d1 = finalOtc[0]
-            val d2 = finalOtc[1]
-            superJodis.add("$d1$d2")
-            superJodis.add("$d2$d1")
-            if (finalOtc.size >= 3) {
-                val d3 = finalOtc[2]
-                superJodis.add("$d1$d3")
-                if (finalOtc.size >= 4) {
-                    val d4 = finalOtc[3]
-                    superJodis.add("$d2$d4")
+        val finalOtc = otcDigits.take(config.targetOtcCount.coerceIn(2, 6)).let {
+            if (it.size < 4) {
+                val list = it.toMutableList()
+                var seed = (safeOpenPana + safeJodi) % 10
+                while (list.size < 4) {
+                    if (!list.contains(seed)) list.add(seed)
+                    seed = (seed + 2) % 10
                 }
-            } else {
-                superJodis.add("${d1}${(d2 + 2) % 10}")
-            }
-        } else {
-            val d1 = finalOtc.firstOrNull() ?: 3
-            superJodis.addAll(listOf("${d1}${(d1 + 2) % 10}", "${(d1 + 2) % 10}${d1}", "${d1}${(d1 + 5) % 10}"))
+                list.take(4)
+            } else it.take(4)
         }
 
-        val pannes = generatePannes(finalOtc)
+        // Advanced Jodi analysis with gap & sequence pattern matching
+        val jodiAnalysis = JodiAnalysisEngine.analyzeAndGenerateJodis(
+            otcDigits = finalOtc,
+            prevOpenPana = safeOpenPana,
+            prevJodi = safeJodi
+        )
+
+        val superJodis = jodiAnalysis.masterVipJodis.take(4)
+        val pannes = PanelPanaRepository.getRecommendedPanasForOtc(
+            otcDigits = finalOtc,
+            maxPerDigit = 1,
+            seedModifier = (safeOpenPana + safeJodi) % 5
+        ).take(4)
 
         return CalculationResult(
             step1Formula = step1Text,
@@ -210,34 +213,11 @@ object FormulaCalculator {
             step3Formula = "Calculated OTC (${config.name}):",
             otcDigits = finalOtc,
             superJodis = superJodis,
-            pannes = pannes
+            pannes = pannes,
+            vipMasterJodis = superJodis,
+            allCrossJodis = jodiAnalysis.otcCrossJodis,
+            dominantGap = jodiAnalysis.dominantGap
         )
-    }
-
-    private fun generatePannes(otcDigits: List<Int>): List<String> {
-        val result = mutableListOf<String>()
-        val defaultPool = listOf("670", "140", "160", "190", "198", "149", "345", "456", "238", "378", "589", "129", "257", "479", "369")
-
-        for (otc in otcDigits.take(4)) {
-            val matching = defaultPool.firstOrNull { pana ->
-                val sum = pana.sumOf { it.digitToInt() } % 10
-                sum == otc
-            }
-            if (matching != null && !result.contains(matching)) {
-                result.add(matching)
-            }
-        }
-
-        var index = 0
-        while (result.size < 3 && index < defaultPool.size) {
-            val item = defaultPool[index]
-            if (!result.contains(item)) {
-                result.add(item)
-            }
-            index++
-        }
-
-        return result
     }
 
     /**

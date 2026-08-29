@@ -1,8 +1,10 @@
 package com.example
 
+import android.app.Activity
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
@@ -32,10 +34,17 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.ListAlt
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.VpnKey
+import com.example.ui.components.AuthDialog
+import com.example.ui.components.ExitConfirmationDialog
+import com.example.ui.components.SplashScreen
+import com.example.ui.components.UserProfileManagerDialog
+import com.example.ui.screens.AuthGateScreen
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalDrawerSheet
@@ -54,8 +63,11 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.Modifier
@@ -97,6 +109,12 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        try {
+            com.example.util.MarketNotificationManager.createNotificationChannel(this)
+            com.example.util.MarketNotificationManager.scheduleAllMarketAlarms(this)
+        } catch (e: Throwable) {
+            // Guard against any runtime exceptions during notification channel/alarm creation
+        }
         setContent {
             MyApplicationTheme {
                 A23AppRoot()
@@ -113,6 +131,10 @@ fun A23AppRoot(viewModel: A23ViewModel = viewModel()) {
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
 
+    var showSplashScreen by rememberSaveable { mutableStateOf(true) }
+    var showExitDialog by remember { mutableStateOf(false) }
+    var showUserProfileDialog by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
         viewModel.initContextStorage(context)
     }
@@ -122,6 +144,52 @@ fun A23AppRoot(viewModel: A23ViewModel = viewModel()) {
             snackbarHostState.showSnackbar(msg)
             viewModel.clearStatusMessage()
         }
+    }
+
+    // System Back Handler with Exit Confirmation
+    BackHandler(enabled = !showSplashScreen) {
+        if (drawerState.isOpen) {
+            scope.launch { drawerState.close() }
+        } else if (uiState.showPanelChartScreen) {
+            viewModel.dismissPanelChart()
+        } else if (uiState.showWallpaperGalleryDialog) {
+            viewModel.dismissWallpaperGallery()
+        } else if (uiState.showOfflineStorageDialog) {
+            viewModel.dismissOfflineStorageDialog()
+        } else if (uiState.showSyncReportDialog) {
+            viewModel.dismissSyncReportDialog()
+        } else if (uiState.showAuthDialog) {
+            viewModel.setAuthDialogVisible(false)
+        } else if (showUserProfileDialog) {
+            showUserProfileDialog = false
+        } else if (uiState.activeTab != AppNavTab.HOME) {
+            viewModel.setActiveTab(AppNavTab.HOME)
+        } else {
+            showExitDialog = true
+        }
+    }
+
+    if (showSplashScreen) {
+        SplashScreen(
+            durationSeconds = 5,
+            onSplashFinished = { showSplashScreen = false }
+        )
+        return
+    }
+
+    if (!uiState.isAuthenticated) {
+        AuthGateScreen(
+            currentUser = uiState.firebaseUser,
+            userProfile = uiState.userProfile,
+            isLoading = uiState.isAuthLoading,
+            errorMessage = uiState.authErrorMessage,
+            successMessage = uiState.authSuccessMessage,
+            onLogin = { email, pass -> viewModel.signInWithEmail(email, pass) },
+            onRegister = { email, pass, name, phone, city -> viewModel.registerWithEmail(email, pass, name, phone, city) },
+            onForgotPassword = { email -> viewModel.sendPasswordReset(email) },
+            onGuestUnlock = { name, phone -> viewModel.unlockWithGuestPin(name, phone) }
+        )
+        return
     }
 
     val availableMarkets = remember(uiState.predictions) {
@@ -231,17 +299,12 @@ fun A23AppRoot(viewModel: A23ViewModel = viewModel()) {
                                                 modifier = Modifier.fillMaxSize()
                                             )
                                         } else {
-                                            Box(
+                                            androidx.compose.foundation.Image(
+                                                painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_admin_owner_portrait),
+                                                contentDescription = "Admin Portrait",
                                                 modifier = Modifier.fillMaxSize(),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Text(
-                                                    text = "SS",
-                                                    color = NeonGoldBright,
-                                                    fontSize = 13.sp,
-                                                    fontWeight = FontWeight.Black
-                                                )
-                                            }
+                                                contentScale = ContentScale.Crop
+                                            )
                                         }
                                     }
                                 }
@@ -321,6 +384,20 @@ fun A23AppRoot(viewModel: A23ViewModel = viewModel()) {
                         )
 
                         NavigationDrawerItem(
+                            label = { Text("🧠 AI Neural Lab & Engine (Gemini/OpenAI/Zen)", fontWeight = FontWeight.Bold) },
+                            selected = uiState.activeTab == AppNavTab.A23_LAB,
+                            onClick = {
+                                viewModel.setActiveTab(AppNavTab.A23_LAB)
+                                scope.launch { drawerState.close() }
+                            },
+                            colors = NavigationDrawerItemDefaults.colors(
+                                selectedContainerColor = Color(0x33A855F7),
+                                selectedTextColor = Color(0xFFC084FC),
+                                unselectedTextColor = Color(0xFFE9D5FF)
+                            )
+                        )
+
+                        NavigationDrawerItem(
                             label = { Text("📱 Phone Storage & Drive", fontWeight = FontWeight.Bold) },
                             selected = false,
                             onClick = {
@@ -349,16 +426,36 @@ fun A23AppRoot(viewModel: A23ViewModel = viewModel()) {
                         )
 
                         NavigationDrawerItem(
-                            label = { Text("⚡ A23 Lab (New Option)", fontWeight = FontWeight.Bold) },
-                            selected = uiState.activeTab == AppNavTab.A23_LAB,
+                            label = { Text("👤 User Profile & PIN (प्रोफाइल)", fontWeight = FontWeight.Bold) },
+                            selected = showUserProfileDialog,
                             onClick = {
-                                viewModel.setActiveTab(AppNavTab.A23_LAB)
+                                showUserProfileDialog = true
                                 scope.launch { drawerState.close() }
                             },
                             colors = NavigationDrawerItemDefaults.colors(
-                                selectedContainerColor = Color(0x33A855F7),
-                                selectedTextColor = Color(0xFFC084FC),
-                                unselectedTextColor = Color(0xFFE9D5FF)
+                                selectedContainerColor = Color(0x33F59E0B),
+                                selectedTextColor = NeonGoldBright,
+                                unselectedTextColor = Color.White
+                            )
+                        )
+
+                        NavigationDrawerItem(
+                            label = {
+                                val user = uiState.firebaseUser
+                                Text(
+                                    if (user != null) "🔐 My Account (${user.displayName})" else "🔑 Firebase Login / Register",
+                                    fontWeight = FontWeight.Bold
+                                )
+                            },
+                            selected = false,
+                            onClick = {
+                                viewModel.setAuthDialogVisible(true)
+                                scope.launch { drawerState.close() }
+                            },
+                            colors = NavigationDrawerItemDefaults.colors(
+                                selectedContainerColor = Color(0x3322C55E),
+                                selectedTextColor = NeonGreen,
+                                unselectedTextColor = Color.White
                             )
                         )
 
@@ -413,9 +510,11 @@ fun A23AppRoot(viewModel: A23ViewModel = viewModel()) {
                     if (uiState.activeTab == AppNavTab.HOME && !uiState.showPanelChartScreen) {
                         AppHeader(
                             userProfile = uiState.userProfile,
+                            firebaseUser = uiState.firebaseUser,
                             isSyncing = uiState.isSyncing,
                             onMenuClick = { scope.launch { drawerState.open() } },
-                            onProfileClick = { viewModel.setActiveTab(AppNavTab.SETTINGS) },
+                            onProfileClick = { showUserProfileDialog = true },
+                            onAuthClick = { viewModel.setAuthDialogVisible(true) },
                             onSyncClick = { viewModel.syncWithGithub(context) }
                         )
                     }
@@ -439,6 +538,7 @@ fun A23AppRoot(viewModel: A23ViewModel = viewModel()) {
                             HomeScreen(
                                 predictions = uiState.predictions,
                                 searchQuery = uiState.searchQuery,
+                                activeFormula = uiState.settings.activeFormula,
                                 onSearchQueryChange = { viewModel.setSearchQuery(it) },
                                 onRunCalculation = { viewModel.runCalculation(it) },
                                 onRecalculateCustom = { marketId, openPana, jodi, divisor ->
@@ -469,8 +569,13 @@ fun A23AppRoot(viewModel: A23ViewModel = viewModel()) {
                                 userProfile = uiState.userProfile,
                                 onUpdateSettings = { viewModel.updateSettings(it) },
                                 onUpdateProfile = { viewModel.updateProfile(it, context) },
+                                onUpdateAdminPhoto = { uri -> viewModel.updateAdminProfilePhotoFromUri(context, uri) },
                                 onSyncGithub = { viewModel.syncWithGithub(context) },
                                 onNavigateToLab = { viewModel.setActiveTab(AppNavTab.A23_LAB) },
+                                firebaseUser = uiState.firebaseUser,
+                                onOpenAuthDialog = { viewModel.setAuthDialogVisible(true) },
+                                onSignOut = { viewModel.signOut() },
+                                onForgotPassword = { viewModel.sendPasswordReset(it) },
                                 onOpenSyncReport = { viewModel.openSyncReportDialog() },
                                 onImportRawData = { market, raw -> viewModel.importRawAdminData(market, raw, context) },
                                 onOpenPanelChart = { market -> viewModel.openPanelChart(market) },
@@ -486,6 +591,14 @@ fun A23AppRoot(viewModel: A23ViewModel = viewModel()) {
                                 selectedMarket = uiState.selectedHistoryMarket,
                                 allMarkets = availableMarkets,
                                 userProfile = uiState.userProfile,
+                                aiSettings = uiState.aiSettings,
+                                onUpdateAiSettings = { viewModel.updateAiSettings(it, context) },
+                                aiGeneratedFormula = uiState.aiGeneratedFormula,
+                                aiBacktestReport = uiState.aiBacktestReport,
+                                isAiGenerating = uiState.isAiGenerating,
+                                onGenerateAiFormula = { market, prompt -> viewModel.generateAiFormula(market, prompt) },
+                                onRunAutomatedAiBacktest = { market -> viewModel.runAutomatedAiBacktest(market) },
+                                onApplyAiFormula = { formula -> viewModel.applyAiFormulaToActiveConfig(formula, context) },
                                 onApplyFormula = { formula ->
                                     viewModel.applyAndSaveFormula(context, formula)
                                 },
@@ -494,6 +607,9 @@ fun A23AppRoot(viewModel: A23ViewModel = viewModel()) {
                                 },
                                 onDeleteCustomFormula = { formulaId ->
                                     viewModel.deleteCustomFormula(context, formulaId)
+                                },
+                                onGetMarketHistory = { market ->
+                                    viewModel.getHistoryForMarket(market)
                                 },
                                 onRunBacktest = { market, formula, daysLimit ->
                                     viewModel.runBacktestAnalysis(market, formula, daysLimit)
@@ -504,6 +620,21 @@ fun A23AppRoot(viewModel: A23ViewModel = viewModel()) {
                                 onBack = { viewModel.setActiveTab(AppNavTab.HOME) }
                             )
                         }
+                    }
+
+                    // User Profile Manager Dialog
+                    if (showUserProfileDialog) {
+                        UserProfileManagerDialog(
+                            userProfile = uiState.userProfile,
+                            onSaveProfile = { updated ->
+                                viewModel.updateProfile(updated, context)
+                                showUserProfileDialog = false
+                            },
+                            onUpdatePhoto = { uri ->
+                                viewModel.updateAdminProfilePhotoFromUri(context, uri)
+                            },
+                            onDismiss = { showUserProfileDialog = false }
+                        )
                     }
 
                     // Wallpaper Gallery & Custom Photo Dialog
@@ -551,6 +682,21 @@ fun A23AppRoot(viewModel: A23ViewModel = viewModel()) {
                         )
                     }
 
+                    // Firebase Authentication Dialog (Login / Register / Forgot Password)
+                    if (uiState.showAuthDialog) {
+                        AuthDialog(
+                            currentUser = uiState.firebaseUser,
+                            isLoading = uiState.isAuthLoading,
+                            errorMessage = uiState.authErrorMessage,
+                            successMessage = uiState.authSuccessMessage,
+                            onDismiss = { viewModel.setAuthDialogVisible(false) },
+                            onLogin = { email, pass -> viewModel.signInWithEmail(email, pass) },
+                            onRegister = { email, pass, name -> viewModel.registerWithEmail(email, pass, name) },
+                            onForgotPassword = { email -> viewModel.sendPasswordReset(email) },
+                            onSignOut = { viewModel.signOut() }
+                        )
+                    }
+
                     // Offline Storage & Google Drive Dialog
                     if (uiState.showOfflineStorageDialog) {
                         OfflineStorageDialog(
@@ -574,6 +720,16 @@ fun A23AppRoot(viewModel: A23ViewModel = viewModel()) {
                             }
                         )
                     }
+
+                    // Exit Confirmation Dialog on System Back
+                    if (showExitDialog) {
+                        ExitConfirmationDialog(
+                            onDismiss = { showExitDialog = false },
+                            onConfirmExit = {
+                                (context as? Activity)?.finish()
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -586,53 +742,61 @@ fun A23BottomNavigation(
     onTabSelected: (AppNavTab) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Surface(
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .navigationBarsPadding(),
-        color = Color(0xF2080E1A),
-        tonalElevation = 8.dp,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x33F59E0B))
+            .navigationBarsPadding()
+            .padding(horizontal = 14.dp, vertical = 8.dp)
     ) {
-        Row(
+        Surface(
+            shape = RoundedCornerShape(22.dp),
+            color = Color(0x35080E1A),
+            tonalElevation = 2.dp,
+            border = androidx.compose.foundation.BorderStroke(1.2.dp, Brush.horizontalGradient(listOf(Color(0x66F59E0B), Color(0x4406B6D4), Color(0x66A855F7)))),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 6.dp, horizontal = 12.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
-            verticalAlignment = Alignment.CenterVertically
+                .clip(RoundedCornerShape(22.dp))
         ) {
-            BottomNavItem(
-                icon = Icons.Default.Home,
-                label = "Home",
-                isSelected = currentTab == AppNavTab.HOME,
-                onClick = { onTabSelected(AppNavTab.HOME) },
-                testTag = "nav_tab_home"
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 6.dp, horizontal = 8.dp),
+                horizontalArrangement = Arrangement.SpaceAround,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                BottomNavItem(
+                    icon = Icons.Default.Home,
+                    label = "Home",
+                    isSelected = currentTab == AppNavTab.HOME,
+                    onClick = { onTabSelected(AppNavTab.HOME) },
+                    testTag = "nav_tab_home"
+                )
 
-            BottomNavItem(
-                icon = Icons.Default.History,
-                label = "History",
-                isSelected = currentTab == AppNavTab.HISTORY,
-                onClick = { onTabSelected(AppNavTab.HISTORY) },
-                testTag = "nav_tab_history"
-            )
+                BottomNavItem(
+                    icon = Icons.Default.History,
+                    label = "History",
+                    isSelected = currentTab == AppNavTab.HISTORY,
+                    onClick = { onTabSelected(AppNavTab.HISTORY) },
+                    testTag = "nav_tab_history"
+                )
 
-            BottomNavItem(
-                icon = Icons.Default.AutoAwesome,
-                label = "A23 Lab",
-                isSelected = currentTab == AppNavTab.A23_LAB,
-                onClick = { onTabSelected(AppNavTab.A23_LAB) },
-                accentColor = Color(0xFFC084FC),
-                testTag = "nav_tab_lab"
-            )
+                BottomNavItem(
+                    icon = Icons.Default.AutoAwesome,
+                    label = "A23 Lab",
+                    isSelected = currentTab == AppNavTab.A23_LAB,
+                    onClick = { onTabSelected(AppNavTab.A23_LAB) },
+                    accentColor = Color(0xFFC084FC),
+                    testTag = "nav_tab_lab"
+                )
 
-            BottomNavItem(
-                icon = Icons.Default.Settings,
-                label = "Settings",
-                isSelected = currentTab == AppNavTab.SETTINGS,
-                onClick = { onTabSelected(AppNavTab.SETTINGS) },
-                testTag = "nav_tab_settings"
-            )
+                BottomNavItem(
+                    icon = Icons.Default.Settings,
+                    label = "Settings",
+                    isSelected = currentTab == AppNavTab.SETTINGS,
+                    onClick = { onTabSelected(AppNavTab.SETTINGS) },
+                    testTag = "nav_tab_settings"
+                )
+            }
         }
     }
 }

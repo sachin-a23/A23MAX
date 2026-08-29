@@ -24,7 +24,10 @@ data class MarketPrediction(
     val step2Result: Long,
     val step3Formula: String = "",
     val calculatedOtcDigits: List<Int>,
-    val superJodiList: List<String>
+    val superJodiList: List<String>,
+    val vipMasterJodis: List<String> = emptyList(),
+    val allCrossJodis: List<String> = emptyList(),
+    val dominantGap: Int = 2
 )
 
 data class MarketHistoryEntry(
@@ -111,21 +114,24 @@ enum class ThemePreset(val displayName: String, val primaryColorHex: Long, val s
     MATRIX("Matrix Green & Yellow", 0xFF22C55E, 0xFFEAB308)
 }
 
-enum class WallpaperStyle(val displayName: String, val description: String, val category: String = "HD Theme") {
-    CYBER_GRID("Cyber Matrix Grid", "Futuristic laser grid with glowing neon spotlights", "Cyber"),
-    AURORA_NEBULA("Aurora Nebula", "Cosmic emerald, cyan & deep purple waves", "Cosmos"),
-    ROYAL_GOLD_HD("Royal Gold HD", "Ultra-luminous 24K gold radiance & diamond rays", "Luxury"),
-    MATRIX_STREAM("Matrix Stream", "Digital neon green cyber energy streams", "Cyber"),
-    COSMIC_DEEP_SPACE("Cosmic Deep Space", "Interstellar ultraviolet nebula with stars", "Cosmos"),
-    GOLDEN_VIP("Golden VIP Luxury", "Royal gold & amber ambient luxury gradient", "Luxury"),
-    MIDNIGHT_SAPPHIRE("Midnight Sapphire", "Deep dark blue obsidian space mesh", "Luxury"),
-    SUNSET_CYBERPUNK("Sunset Cyberpunk", "Vibrant neon magenta & electric cyan glow", "Cyber"),
-    EMERALD_DRAGON("Emerald Dragon", "Royal luminous jade and laser energy rays", "Luxury"),
-    FIRE_MAGMA("Fire Phoenix Magma", "Volcanic crimson magma glow & electric sparks", "Luxury"),
-    RUBY_CRIMSON("Ruby Crimson", "Dark velvet titanium with fiery ruby glow", "Luxury"),
-    OBSIDIAN_CARBON("Obsidian Carbon", "Sleek carbon fiber dark matrix & titanium", "Minimal"),
-    DIAMOND_PRISM("Diamond Prism", "Prismatic platinum frost & diamond aura", "Minimal"),
-    CUSTOM_GALLERY("Custom Phone Photo", "Your custom selected photo from device gallery", "My Photos")
+enum class WallpaperStyle(val displayName: String, val description: String, val category: String = "App Official") {
+    ROYAL_GOLD_HD("A23 Royal Gold Matrix", "Official 24K gold luxury matrix & cyber grid", "App Official"),
+    CYBER_EMERALD_HD("A23 Cyber Emerald Pulse", "Official neon emerald market trading stream", "App Official"),
+    CUSTOM_GALLERY("Custom Saved Wallpaper", "Your custom saved photo from phone gallery", "Saved Gallery"),
+
+    // Legacy style aliases mapped to official app themes
+    CYBER_GRID("Cyber Grid Matrix", "A23 grid theme", "App Official"),
+    MATRIX_STREAM("Matrix Stream", "Neon green cyber energy", "App Official"),
+    GOLDEN_VIP("Golden VIP Luxury", "Royal gold ambient luxury", "App Official"),
+    AURORA_NEBULA("Aurora Nebula", "Cosmic waves", "App Official"),
+    MIDNIGHT_SAPPHIRE("Midnight Sapphire", "Dark blue space", "App Official"),
+    SUNSET_CYBERPUNK("Sunset Cyberpunk", "Magenta & cyan glow", "App Official"),
+    EMERALD_DRAGON("Emerald Dragon", "Luminous jade rays", "App Official"),
+    FIRE_MAGMA("Fire Magma", "Crimson magma glow", "App Official"),
+    RUBY_CRIMSON("Ruby Crimson", "Fiery ruby glow", "App Official"),
+    OBSIDIAN_CARBON("Obsidian Carbon", "Carbon fiber matrix", "App Official"),
+    DIAMOND_PRISM("Diamond Prism", "Platinum frost", "App Official"),
+    COSMIC_DEEP_SPACE("Cosmic Deep Space", "Interstellar ultraviolet nebula", "App Official")
 }
 
 enum class TextColorAccent(
@@ -168,6 +174,8 @@ data class SyncReportData(
 data class UserProfile(
     val userId: String = "A23-8411",
     val userName: String = "Sachin Solunke",
+    val phoneNumber: String = "+91 98765 43210",
+    val city: String = "Mumbai, MH",
     val role: String = "VIP Lead Admin & Analyst",
     val memberSince: String = "2024",
     val email: String = "woldcom87@gmail.com",
@@ -178,13 +186,14 @@ data class UserProfile(
     val telegram: String = "@Open_network_Sachin",
     val website: String = "https://sachin-a23.github.io/A23Gaming/",
     val facebook: String = "https://www.facebook.com/share/1KS9zaNsbU/",
-    val profilePhotoUri: String? = null
+    val profilePhotoUri: String? = null,
+    val isAuthenticated: Boolean = false
 )
 
 data class AppCustomSettings(
     val isWallpaperEnabled: Boolean = true,
-    val wallpaperStyle: WallpaperStyle = WallpaperStyle.CYBER_GRID,
-    val wallpaperDim: Float = 0.35f, // 0.0 to 1.0 (0% to 100%)
+    val wallpaperStyle: WallpaperStyle = WallpaperStyle.ROYAL_GOLD_HD,
+    val wallpaperDim: Float = 0.0f, // 0.0 to 1.0 (0.0 = Ultra clear wallpaper, no black glass tint)
     val textColorAccent: TextColorAccent = TextColorAccent.GOLD,
     val glassBlurIntensity: Float = 0.8f,
     val themePreset: ThemePreset = ThemePreset.NEON_GOLD,

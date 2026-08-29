@@ -103,7 +103,7 @@ fun WallpaperGalleryDialog(
         }
     }
 
-    val categories = listOf("All", "My Photos", "Cyber", "Luxury", "Cosmos", "Minimal")
+    val categories = listOf("All", "App Wallpapers", "My Saved Gallery")
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -286,15 +286,15 @@ fun WallpaperGalleryDialog(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // 4. WALLPAPERS GRID (Built-in + Custom Gallery Uploads)
-                val presetStyles = WallpaperStyle.values().filter { it != WallpaperStyle.CUSTOM_GALLERY }
-                val filteredPresets = if (selectedCategory == "All") {
-                    presetStyles
+                // 4. WALLPAPERS GRID (2 Official App Wallpapers + Custom Saved Gallery Wallpapers)
+                val officialAppWallpapers = listOf(WallpaperStyle.ROYAL_GOLD_HD, WallpaperStyle.CYBER_EMERALD_HD)
+                val filteredPresets = if (selectedCategory == "My Saved Gallery") {
+                    emptyList()
                 } else {
-                    presetStyles.filter { it.category.equals(selectedCategory, ignoreCase = true) }
+                    officialAppWallpapers
                 }
 
-                val showCustomPhotos = selectedCategory == "All" || selectedCategory == "My Photos"
+                val showCustomPhotos = selectedCategory == "All" || selectedCategory == "My Saved Gallery"
                 val customWallpapers = if (showCustomPhotos) tempSettings.customWallpaperList else emptyList()
 
                 LazyVerticalGrid(

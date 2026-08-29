@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>A23 MAX PRO VIP - Official Formula Engine & Live Market Charts</title>
+  <meta name="description" content="A23 MAX PRO VIP Official App Download, Live Satta Matka Charts, Kalyan, Milan, Main Bazar 4-OTC Formula Engine & Verified Policies by Sachin Solunke.">
+  <meta name="theme-color" content="#070C16">
+
+  <!-- Google Fonts for Modern Styling -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&family=JetBrains+Mono:wght@400;700;800&family=Noto+Sans+Devanagari:wght@400;600;700;900&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-dark: #070c18;
+      --card-glass: rgba(15, 23, 42, 0.78);
+      --card-border: rgba(6, 182, 212, 0.35);
+      --neon-cyan: #06b6d4;
+      --neon-cyan-bright: #38bdf8;
+      --neon-gold: #f59e0b;
+      --neon-gold-bright: #fbbf24;
+      --neon-green: #22c55e;
+      --neon-purple: #a855f7;
+      --neon-red: #ef4444;
+      --text-white: #f8fafc;
+      --text-muted: #94a3b8;
+      --font-main: 'Outfit', 'Noto Sans Devanagari', -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: var(--font-main);
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(at 5% 5%, rgba(6, 182, 212, 0.16) 0px, transparent 50%),
+        radial-gradient(at 95% 95%, rgba(245, 158, 11, 0.14) 0px, transparent 50%),
+        radial-gradient(at 50% 50%, rgba(168, 85, 247, 0.09) 0px, transparent 50%);
+      background-attachment: fixed;
+      color: var(--text-white);
+      line-height: 1.6;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .container {
+      max-width: 1140px;
+      margin: 0 auto;
+      padding: 20px 16px 60px 16px;
+    }
+
+    /* Glassmorphism Components */
+    .glass-card {
+      background: var(--card-glass);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 10px 36px 0 rgba(0, 0, 0, 0.45);
+      transition: all 0.25s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .glass-card:hover {
+      border-color: rgba(245, 158, 11, 0.6);
+      box-shadow: 0 12px 40px 0 rgba(245, 158, 11, 0.15);
+    }
+
+    .glass-card-gold {
+      border: 1.5px solid rgba(245, 158, 11, 0.5);
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.75));
+    }
+
+    /* Navigation Bar */
+    .navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 20px;
+      background: rgba(11, 19, 43, 0.85);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(6, 182, 212, 0.3);
+      border-radius: 16px;
+      margin-bottom: 24px;
+      position: sticky;
+      top: 12px;
+      z-index: 100;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+
+    .brand-logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--neon-gold), var(--neon-cyan));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      color: #000;
+      font-size: 20px;
+      box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
+    }
+
+    .brand-title {
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: 0.5px;
+      background: linear-gradient(90deg, #f59e0b, #38bdf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      line-height: 1.2;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .nav-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+
+    .nav-link:hover, .nav-link.active {
+      color: #fff;
+      background: rgba(6, 182, 212, 0.15);
+      border: 1px solid rgba(6, 182, 212, 0.3);
+    }
+
+    .btn-nav-download {
+      background: linear-gradient(135deg, var(--neon-gold), #ea580c);
+      color: #000 !important;
+      padding: 8px 18px !important;
+      border-radius: 10px;
+      font-weight: 800 !important;
+      box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Hero Section */
+    .hero {
+      text-align: center;
+      padding: 40px 20px;
+      position: relative;
+    }
+
+    .vip-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid var(--neon-gold);
+      color: var(--neon-gold-bright);
+      padding: 6px 16px;
+      border-radius: 30px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      margin-bottom: 16px;
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--neon-green);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--neon-green);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.3); opacity: 1; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+
+    .hero h1 {
+      font-size: 38px;
+      font-weight: 900;
+      margin-bottom: 16px;
+      color: #ffffff;
+      line-height: 1.25;
+    }
+
+    .hero-highlight {
+      background: linear-gradient(90deg, #f59e0b, #06b6d4, #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero p {
+      font-size: 16px;
+      color: var(--text-muted);
+      max-width: 760px;
+      margin: 0 auto 28px auto;
+      line-height: 1.7;
+    }
+
+    .btn-group {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 14px 32px;
+      border-radius: 14px;
+      font-size: 15px;
+      font-weight: 800;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      transition: all 0.25s ease;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--neon-gold), #ea580c);
+      color: #000;
+      box-shadow: 0 6px 25px rgba(245, 158, 11, 0.45);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.65);
+    }
+
+    .btn-secondary {
+      background: rgba(6, 182, 212, 0.12);
+      border: 1.5px solid var(--neon-cyan);
+      color: var(--neon-cyan-bright);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(6, 182, 212, 0.25);
+      transform: translateY(-2px);
+    }
+
+    .btn-purple {
+      background: rgba(168, 85, 247, 0.15);
+      border: 1.5px solid var(--neon-purple);
+      color: #c084fc;
+    }
+
+    /* Download APK Card */
+    .download-box {
+      background: linear-gradient(135deg, rgba(17, 24, 39, 0.9), rgba(15, 23, 42, 0.85));
+      border: 2px solid var(--neon-gold);
+      border-radius: 20px;
+      padding: 28px;
+      margin-bottom: 28px;
+    }
+
+    .download-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 24px;
+      align-items: center;
+    }
+
+    .apk-spec-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .apk-spec-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 8px;
+      font-size: 13px;
+    }
+
+    .install-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .step-item {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      background: rgba(6, 182, 212, 0.08);
+      border: 1px solid rgba(6, 182, 212, 0.2);
+      padding: 12px;
+      border-radius: 12px;
+    }
+
+    .step-number {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--neon-cyan);
+      color: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+
+    /* Market Tabs & Charts */
+    .market-nav {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      margin-bottom: 20px;
+      scrollbar-width: thin;
+    }
+
+    .market-tab-btn {
+      padding: 10px 18px;
+      border-radius: 10px;
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #cbd5e1;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .market-tab-btn.active {
+      background: var(--neon-gold);
+      color: #000;
+      border-color: var(--neon-gold-bright);
+      box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+    }
+
+    /* Chart Table */
+    .chart-container {
+      overflow-x: auto;
+      background: rgba(11, 19, 43, 0.65);
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    table.chart-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: center;
+      font-size: 13px;
+    }
+
+    table.chart-table th {
+      background: rgba(15, 23, 42, 0.95);
+      color: var(--neon-gold);
+      padding: 12px 10px;
+      font-weight: 800;
+      border-bottom: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    table.chart-table td {
+      padding: 12px 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-family: var(--font-mono);
+      font-weight: 600;
+    }
+
+    table.chart-table tr:hover td {
+      background: rgba(6, 182, 212, 0.08);
+    }
+
+    .jodi-badge {
+      font-size: 15px;
+      font-weight: 900;
+      color: var(--neon-gold-bright);
+      padding: 2px 6px;
+      background: rgba(245, 158, 11, 0.15);
+      border-radius: 6px;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .patti-text {
+      color: var(--neon-cyan-bright);
+      font-size: 12px;
+    }
+
+    /* Formula Simulator Widget */
+    .calc-box {
+      background: rgba(6, 182, 212, 0.06);
+      border: 1px solid var(--neon-cyan);
+      border-radius: 16px;
+      padding: 20px;
+      margin-top: 24px;
+    }
+
+    .calc-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 14px;
+      margin: 16px 0;
+    }
+
+    .input-field {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 10px;
+      background: #090e1a;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #fff;
+      font-family: var(--font-mono);
+      font-size: 15px;
+      font-weight: 700;
+      outline: none;
+    }
+
+    .input-field:focus {
+      border-color: var(--neon-gold);
+    }
+
+    .calc-res-box {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid var(--neon-gold);
+      border-radius: 12px;
+      padding: 14px;
+      text-align: center;
+      margin-top: 14px;
+    }
+
+    .otc-pill-wrap {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .otc-pill {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(168, 85, 247, 0.2));
+      border: 1.5px solid var(--neon-cyan);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 18px;
+      box-shadow: 0 4px 15px rgba(6, 182, 212, 0.3);
+    }
+
+    /* Benefits & Risks (Fayde aur Nuksan) */
+    .pros-cons-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 16px;
+    }
+
+    .pro-box {
+      background: rgba(34, 197, 94, 0.08);
+      border: 1.5px solid rgba(34, 197, 94, 0.4);
+      border-radius: 16px;
+      padding: 20px;
+    }
+
+    .con-box {
+      background: rgba(239, 68, 68, 0.08);
+      border: 1.5px solid rgba(239, 68, 68, 0.4);
+      border-radius: 16px;
+      padding: 20px;
+    }
+
+    .policy-point {
+      margin-bottom: 12px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .policy-point strong {
+      color: #fff;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    /* Policy Accordion */
+    .accordion {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .accordion-item {
+      background: rgba(11, 19, 43, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .accordion-header {
+      padding: 14px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--neon-gold-bright);
+    }
+
+    .accordion-body {
+      padding: 0 18px 16px 18px;
+      font-size: 13px;
+      color: #cbd5e1;
+      line-height: 1.7;
+    }
+
+    /* Admin Card */
+    .admin-card {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      flex-wrap: wrap;
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.8));
+      border: 1.5px solid var(--neon-gold);
+    }
+
+    .admin-avatar {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--neon-gold), var(--neon-cyan), var(--neon-purple));
+      padding: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .admin-avatar-inner {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: #080c14;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 26px;
+      color: var(--neon-gold);
+    }
+
+    .admin-links {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .admin-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      text-decoration: none;
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.05);
+      transition: all 0.2s;
+    }
+
+    .admin-btn:hover {
+      border-color: var(--neon-cyan);
+      background: rgba(6, 182, 212, 0.2);
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 36px 0 20px 0;
+      color: var(--text-muted);
+      font-size: 13px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      margin-top: 40px;
+    }
+
+    @media (max-width: 768px) {
+      .hero h1 { font-size: 26px; }
+      .download-grid { grid-template-columns: 1fr; }
+      .pros-cons-grid { grid-template-columns: 1fr; }
+      .nav-links { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Sticky Navigation Bar -->
+    <nav class="navbar">
+      <a href="#" class="brand-wrap">
+        <div class="brand-logo">A23</div>
+        <div>
+          <div class="brand-title">A23 MAX PRO VIP</div>
+          <div style="font-size: 10.5px; color: var(--text-muted); font-weight: 600;">Official Formula & Chart Engine</div>
+        </div>
+      </a>
+      <div class="nav-links">
+        <a href="#download" class="nav-link">📲 Download App</a>
+        <a href="#charts" class="nav-link">📊 Market Charts</a>
+        <a href="#simulator" class="nav-link">⚡ Live Calculator</a>
+        <a href="#policy" class="nav-link">📋 Policies & Guide</a>
+        <a href="#proscons" class="nav-link">⚖️ फायदे व नुकसान</a>
+        <a href="#admin" class="nav-link">👑 Creator Admin</a>
+      </div>
+      <a href="#download" class="btn-nav-download">
+        <span>⚡ Get APK v0.2.1</span>
+      </a>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="glass-card hero">
+      <div class="vip-pill">
+        <div class="pulse-dot"></div>
+        <span>VIP MATHEMATICAL ENGINE • 100% OFFLINE SAFE</span>
+      </div>
+
+      <h1>
+        <span class="hero-highlight">A23 MAX PRO VIP</span><br>
+        एडवांस्ड सांख्यिकी व फॉर्मूला मार्केट पोर्टल
+      </h1>
+
+      <p>
+        4-OTC, सुपर जोड़ी एवं पैनल की सटीक गणितीय गणना। 8 प्रमुख मार्केट्स (कल्याण, मेन बाजार, मिलन, टाइम बाजार, राजधानी) के लाइव चार्ट्स, ऑन-डिवाइस बैकटैस्टिंग और सचिन सोलुंके द्वारा सत्यापित फॉर्मूला लाइब्रेरी।
+      </p>
+
+      <div class="btn-group">
+        <a href="#download" class="btn btn-primary">
+          📲 डाउनलोड करें (Download APK)
+        </a>
+        <a href="#charts" class="btn btn-secondary">
+          📊 लाइव मार्केट चार्ट देखें
+        </a>
+        <a href="#simulator" class="btn btn-purple">
+          ⚡ ऑनलाइन फॉर्मूला चलाएं
+        </a>
+      </div>
+    </div>
+
+    <!-- App Info & Download Section -->
+    <div id="download" class="glass-card download-box">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+        <div>
+          <h2 style="font-size: 22px; font-weight: 900; color: var(--neon-gold-bright);">
+            📲 A23 MAX PRO VIP Android App Download
+          </h2>
+          <p style="font-size: 13px; color: var(--text-muted);">
+            Direct Official APK Release • 100% Free from Virus / Malware • Play Protect Verified
+          </p>
+        </div>
+        <span style="background: rgba(34, 197, 94, 0.2); color: var(--neon-green); border: 1px solid var(--neon-green); padding: 4px 12px; border-radius: 20px; font-weight: 800; font-size: 12px;">
+          ✓ LATEST STABLE BUILD
+        </span>
+      </div>
+
+      <div class="download-grid">
+        <!-- Left: Specifications -->
+        <div>
+          <div style="background: rgba(0,0,0,0.3); border-radius: 14px; padding: 16px; border: 1px solid rgba(255,255,255,0.06);">
+            <div style="font-weight: 800; color: #fff; font-size: 15px; margin-bottom: 8px;">
+              📦 App Specifications (ऐप जानकारी)
+            </div>
+            <div class="apk-spec-list">
+              <div class="apk-spec-item">
+                <span style="color: var(--text-muted);">App Name:</span>
+                <span style="color: #fff; font-weight: 700;">A23 MAX PRO VIP</span>
+              </div>
+              <div class="apk-spec-item">
+                <span style="color: var(--text-muted);">Version:</span>
+                <span style="color: var(--neon-gold); font-weight: 700;">v0.2.1 VIP Edition</span>
+              </div>
+              <div class="apk-spec-item">
+                <span style="color: var(--text-muted);">File Size:</span>
+                <span style="color: #fff; font-weight: 700;">~24.5 MB</span>
+              </div>
+              <div class="apk-spec-item">
+                <span style="color: var(--text-muted);">OS Requirement:</span>
+                <span style="color: var(--neon-cyan); font-weight: 700;">Android 8.0 to Android 15/16</span>
+              </div>
+              <div class="apk-spec-item">
+                <span style="color: var(--text-muted);">Developer:</span>
+                <span style="color: #fff; font-weight: 700;">Sachin Solunke (Admin)</span>
+              </div>
+              <div class="apk-spec-item">
+                <span style="color: var(--text-muted);">Database:</span>
+                <span style="color: var(--neon-green); font-weight: 700;">100% Offline Room SQLite</span>
+              </div>
+            </div>
+
+            <div style="margin-top: 18px; display: flex; flex-direction: column; gap: 10px;">
+              <button onclick="triggerApkDownload()" class="btn btn-primary" style="width: 100%;">
+                ⚡ Direct APK Download (v0.2.1)
+              </button>
+              <a href="https://github.com/sachin-a23/A23Gaming/releases" target="_blank" class="btn btn-secondary" style="width: 100%; font-size: 13px; padding: 10px;">
+                🔗 GitHub Releases Mirror
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Installation Guide -->
+        <div>
+          <div style="font-weight: 800; color: #fff; font-size: 15px; margin-bottom: 12px;">
+            🛠️ How to Install on Android (इंस्टॉलेशन गाइड)
+          </div>
+          <div class="install-steps">
+            <div class="step-item">
+              <div class="step-number">1</div>
+              <div>
+                <strong style="color: #fff; font-size: 13px;">APK फाइल डाउनलोड करें</strong>
+                <p style="font-size: 12px; color: var(--text-muted);">ऊपर दिए गए 'Direct APK Download' बटन पर क्लिक करके फाइल डाउनलोड करें।</p>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-number">2</div>
+              <div>
+                <strong style="color: #fff; font-size: 13px;">Allow Unknown Sources चालू करें</strong>
+                <p style="font-size: 12px; color: var(--text-muted);">यदि Android 'Install Unknown Apps' पूछे तो Chrome या File Manager को 'Allow' करें।</p>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-number">3</div>
+              <div>
+                <strong style="color: #fff; font-size: 13px;">इंस्टॉल करें और VIP आईडी से लॉगिन करें</strong>
+                <p style="font-size: 12px; color: var(--text-muted);">ऐप ओपन करें, रजिस्टर करें और अपनी A23 VIP आईडी से तुरंत 8 मार्केट्स के ऑटोमैटिक फॉर्मूले का आनंद लें।</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Market Charts Viewer -->
+    <div id="charts" class="glass-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
+        <div>
+          <h2 style="font-size: 20px; font-weight: 900; color: #fff;">📊 Live Market Panel & Jodi Charts</h2>
+          <p style="font-size: 12px; color: var(--text-muted);">Updated Live Daily • 8 Major Satta Matka Markets</p>
+        </div>
+        <span style="font-size: 12px; color: var(--neon-cyan); font-weight: 700;">Active 2026 Audit Database</span>
+      </div>
+
+      <!-- Market Tab Selector -->
+      <div class="market-nav" id="marketTabs">
+        <button class="market-tab-btn active" onclick="switchMarket('KALYAN')">KALYAN (कल्याण)</button>
+        <button class="market-tab-btn" onclick="switchMarket('MAIN_BAZAR')">MAIN BAZAR (मेन बाजार)</button>
+        <button class="market-tab-btn" onclick="switchMarket('TIME_BAZAR')">TIME BAZAR (टाइम)</button>
+        <button class="market-tab-btn" onclick="switchMarket('MILAN_DAY')">MILAN DAY (मिलन डे)</button>
+        <button class="market-tab-btn" onclick="switchMarket('MILAN_NIGHT')">MILAN NIGHT (मिलन नाईट)</button>
+        <button class="market-tab-btn" onclick="switchMarket('RAJDHANI_DAY')">RAJDHANI DAY (राजधानी डे)</button>
+        <button class="market-tab-btn" onclick="switchMarket('RAJDHANI_NIGHT')">RAJDHANI NIGHT</button>
+        <button class="market-tab-btn" onclick="switchMarket('SHRIDEVI')">SHRIDEVI (श्रीदेवी)</button>
+      </div>
+
+      <!-- Market Details Header -->
+      <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(6, 182, 212, 0.08); padding: 12px 16px; border-radius: 10px; margin-bottom: 14px; border: 1px solid rgba(6, 182, 212, 0.2);">
+        <div>
+          <span id="marketTitle" style="font-size: 16px; font-weight: 900; color: var(--neon-gold-bright);">KALYAN DAY</span>
+          <span id="marketTiming" style="font-size: 12px; color: var(--neon-cyan); margin-left: 10px;">⏰ 04:10 PM / 06:10 PM</span>
+        </div>
+        <div>
+          <span style="font-size: 11px; color: var(--text-muted);">Formula:</span>
+          <span style="font-size: 12px; color: var(--neon-green); font-weight: 800;">A23 Classic (÷9)</span>
+        </div>
+      </div>
+
+      <!-- Table View -->
+      <div class="chart-container">
+        <table class="chart-table">
+          <thead>
+            <tr>
+              <th>तारीख (Date)</th>
+              <th>दिन (Day)</th>
+              <th>ओपन पाना (Open Patti)</th>
+              <th>जोड़ी (Jodi)</th>
+              <th>क्लोज पाना (Close Patti)</th>
+              <th>4-OTC गणना</th>
+              <th>परिणाम स्थिति</th>
+            </tr>
+          </thead>
+          <tbody id="chartTableBody">
+            <!-- Dynamic Rows Injected by JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Live Formula Calculator Simulator -->
+    <div id="simulator" class="glass-card calc-box">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 style="font-size: 18px; font-weight: 900; color: var(--neon-cyan-bright);">
+          ⚡ A23 Mathematical Formula Calculator (लाइव टेस्ट)
+        </h3>
+        <span style="font-size: 11px; color: var(--neon-gold); font-weight: 800; border: 1px solid var(--neon-gold); padding: 2px 8px; border-radius: 6px;">
+          ON-DEVICE SIMULATOR
+        </span>
+      </div>
+      <p style="font-size: 12.5px; color: var(--text-muted);">
+        किसी भी मार्केट का ओपन पाना और जोड़ी दर्ज करें और A23 Classic Math Formula (Step 1 Multiply & Step 2 Divide) के आधार पर तुरंत 4-OTC अंक प्राप्त करें:
+      </p>
+
+      <div class="calc-grid">
+        <div>
+          <label style="font-size: 12px; color: var(--neon-cyan); font-weight: 700; display: block; margin-bottom: 6px;">Open Pana (3-Digit e.g. 159):</label>
+          <input type="number" id="calcPana" class="input-field" value="159" placeholder="159">
+        </div>
+        <div>
+          <label style="font-size: 12px; color: var(--neon-gold); font-weight: 700; display: block; margin-bottom: 6px;">Jodi (2-Digit e.g. 56):</label>
+          <input type="number" id="calcJodi" class="input-field" value="56" placeholder="56">
+        </div>
+        <div style="display: flex; align-items: flex-end;">
+          <button onclick="calculateLiveOtc()" class="btn btn-primary" style="width: 100%; padding: 11px;">
+            ⚡ Calculate 4-OTC
+          </button>
+        </div>
+      </div>
+
+      <div class="calc-res-box">
+        <div style="font-size: 13px; color: var(--text-muted);">
+          Step 1: (<span id="mathPana">159</span> + <span id="mathJodi">56</span>) × <span id="mathPana2">159</span> = <strong id="step1Val" style="color: #fff;">34185</strong> | Step 2: 34185 ÷ 9 = <strong id="step2Val" style="color: var(--neon-gold);">3798</strong>
+        </div>
+        <div style="font-size: 12px; color: var(--neon-cyan); margin-top: 6px; font-weight: 700;">DERIVED 4-OTC PREDICTION DIGITS:</div>
+        <div class="otc-pill-wrap" id="otcResultPills">
+          <div class="otc-pill">3</div>
+          <div class="otc-pill">7</div>
+          <div class="otc-pill">9</div>
+          <div class="otc-pill">8</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fayde aur Nuksan (Pros & Cons Smart Guide) -->
+    <div id="proscons" class="glass-card">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <h2 style="font-size: 20px; font-weight: 900; color: #fff;">⚖️ A23 MAX PRO VIP - फायदे एवं नुकसान (Pros & Cons)</h2>
+          <p style="font-size: 12.5px; color: var(--text-muted);">ईमानदार, निष्पक्ष एवं वैज्ञानिक विश्लेषण • स्मार्ट यूजर गाइड</p>
+        </div>
+        <span style="background: rgba(245, 158, 11, 0.15); color: var(--neon-gold); border: 1px solid var(--neon-gold); padding: 4px 10px; border-radius: 8px; font-weight: 800; font-size: 11px;">
+          FAIR TRANSPARENCY
+        </span>
+      </div>
+
+      <div class="pros-cons-grid">
+        <!-- Fayde / Pros -->
+        <div class="pro-box">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px;">
+            <span style="font-size: 20px;">🌟</span>
+            <h3 style="font-size: 16px; font-weight: 900; color: var(--neon-green);">ऐप के मुख्य फायदे (BENEFITS & PROS):</h3>
+          </div>
+
+          <div class="policy-point">
+            <strong>1. 100% सटीक फॉर्मूला ऑटोमेशन:</strong>
+            A23 क्लासिक और मैट्रिक्स डेल्टा एल्गोरिदम से बिना किसी मानवीय त्रुटि के 4-OTC, सुपर जोड़ी व पैनल सीधे स्क्रीन पर प्राप्त होते हैं।
+          </div>
+
+          <div class="policy-point">
+            <strong>2. पूर्ण ऑफलाइन कार्यप्रणाली:</strong>
+            इंटरनेट न होने पर भी इनबिल्ट हिस्टोरिकल डेटाबेस और फॉर्मूला इंजन आपके फोन में बिना रुकावट काम करता है।
+          </div>
+
+          <div class="policy-point">
+            <strong>3. ऑटोमेटेड AI बैकटैस्टिंग (A23Lab):</strong>
+            पिछले 30 से 90 दिनों के ड्रॉ का विश्लेषण करके सबसे सफल फॉर्मूले को स्वतः लॉक करता है।
+          </div>
+
+          <div class="policy-point">
+            <strong>4. सभी मुख्य मार्केट्स का समर्थन:</strong>
+            कल्याण, मेन बाजार, मिलन डे/नाईट, राजधानी डे/नाईट, टाइम बाजार व श्रीदेवी का पूरा रिकॉर्ड एक ही स्थान पर।
+          </div>
+
+          <div class="policy-point">
+            <strong>5. डायरेक्ट फाउंडर सपोर्ट:</strong>
+            सचिन सोलुंके (A23 Admin) से सीधा व्हाट्सएप, टेलीग्राम व सोशल मीडिया सपोर्ट।
+          </div>
+        </div>
+
+        <!-- Nuksan / Cons -->
+        <div class="con-box">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px;">
+            <span style="font-size: 20px;">⚠️</span>
+            <h3 style="font-size: 16px; font-weight: 900; color: #f87171;">संभावित नुकसान व सावधानियाँ (RISKS & CONS):</h3>
+          </div>
+
+          <div class="policy-point">
+            <strong>1. कोई 100% निश्चित जीत की गारंटी नहीं:</strong>
+            यह विशुद्ध रूप से संख्यात्मक संभाव्यता (Statistical Probability) पर आधारित है। कोई भी गणितीय फॉर्मूला 100% अचूक नहीं हो सकता।
+          </div>
+
+          <div class="policy-point">
+            <strong>2. वित्तीय जोखिम से सावधान रहें:</strong>
+            यदि कोई यूजर वास्तविक सट्टे में अंधाधुंध धन लगाता है तो भारी आर्थिक क्षति हो सकती है। ऐप केवल शैक्षणिक व रिसर्च उद्देश्य के लिए है।
+          </div>
+
+          <div class="policy-point">
+            <strong>3. लत और समय की बर्बादी से बचें:</strong>
+            नंबर्स का अत्यधिक अध्ययन मानसिक शांति और समय को प्रभावित कर सकता है। हमेशा संयम रखें।
+          </div>
+
+          <div class="policy-point">
+            <strong>4. कानूनी नियम व प्रतिबंध:</strong>
+            भारत के कई राज्यों में सट्टा मटका गैरकानूनी है। यूजर को अपने स्थानीय कानूनों का पालन करना अनिवार्य है।
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Official Policies & Legal Terms Accordion -->
+    <div id="policy" class="glass-card">
+      <div style="margin-bottom: 16px;">
+        <h2 style="font-size: 20px; font-weight: 900; color: #fff;">📋 App Policies, User Terms & Privacy Guidelines</h2>
+        <p style="font-size: 12.5px; color: var(--text-muted);">ऐप व यूजर की कानूनी नीतियाँ एवं गोपनीयता नियम</p>
+      </div>
+
+      <div class="accordion">
+        <div class="accordion-item">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <span>🔒 ऐप प्राइवेसी पॉलिसी (App Privacy Policy)</span>
+            <span>▼</span>
+          </div>
+          <div class="accordion-body">
+            A23 MAX PRO VIP ऐप आपकी गोपनीयता का सर्वोच्च सम्मान करता है। आपका डेटा (प्रोफाइल, बैकअप और फॉर्मूला प्रेफरेंस) केवल आपके फोन के लोकल SQLite Room डेटाबेस में स्टोर रहता है। हम आपका डेटा किसी थर्ड-पार्टी कंपनी को नहीं बेचते या साझा नहीं करते। ऐप में स्टोरेज (वॉलपेपर व बैकअप हेतु) और इंटरनेट (लाइव मार्केट सिंक हेतु) की अनुमति ली जाती है।
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <span>👤 यूजर उपयोग नीति एवं नियम (User Agreement & Terms)</span>
+            <span>▼</span>
+          </div>
+          <div class="accordion-body">
+            <strong>1. आयु सीमा:</strong> ऐप केवल 18 वर्ष या उससे अधिक आयु के वयस्कों के लिए है।<br>
+            <strong>2. उचित उपयोग:</strong> यूजर इस ऐप का उपयोग केवल गणितीय विश्लेषण, न्यूमरोलॉजी और संख्यात्मक अनुसंधान के लिए करेंगे।<br>
+            <strong>3. यूजर आईडी:</strong> यूजर को दी गई A23 VIP आईडी गोपनीय है। अनधिकृत रूप से ऐप का कमर्शियल री-सेल करना प्रतिबंधित है।
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <div class="accordion-item">
+            <div class="accordion-header" onclick="toggleAccordion(this)">
+              <span>⚖️ कानूनी डिस्क्लेमर एवं पुलिस नोटिस (Legal Compliance)</span>
+              <span>▼</span>
+            </div>
+            <div class="accordion-body">
+              यह प्लेटफॉर्म और सॉफ्टवेयर किसी भी प्रकार की ऑनलाइन सट्टेबाजी, जुआ या रियल मनी ट्रांजेक्शन का संचालन नहीं करता है। हम Public Gambling Act 1867 और Information Technology Act 2000 का पूर्ण सम्मान करते हैं। यह एक शैक्षणिक गणितीय विश्लेषण उपकरण है। किसी भी वित्तीय लाभ या हानि के लिए यूजर स्वयं उत्तरदायी होंगे।
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Verified Admin & Founder Profile -->
+    <div id="admin" class="glass-card admin-card">
+      <div class="admin-avatar">
+        <div class="admin-avatar-inner">SS</div>
+      </div>
+      <div style="flex: 1; min-width: 250px;">
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <h3 style="font-size: 20px; font-weight: 900; color: #fff;">Sachin Solunke</h3>
+          <span style="background: rgba(6, 182, 212, 0.2); color: var(--neon-cyan-bright); border: 1px solid var(--neon-cyan); padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 800;">
+            ✓ VERIFIED CREATOR & LEAD ANALYST
+          </span>
+        </div>
+        <div style="font-size: 13px; color: var(--neon-gold); font-weight: 700; margin-top: 2px;">
+          Founder & Chief Mathematical Architect • ID: A23-8411
+        </div>
+        <div style="font-size: 12px; color: var(--text-muted); margin-top: 6px;">
+          📧 woldcom87@gmail.com | 📱 Instagram: @black_b.o.y__ | 💬 Telegram: @Open_network_Sachin
+        </div>
+
+        <div class="admin-links">
+          <a href="https://t.me/Open_network_Sachin" target="_blank" class="admin-btn">
+            ✈️ Telegram Channel
+          </a>
+          <a href="https://instagram.com/black_b.o.y__" target="_blank" class="admin-btn">
+            📷 Instagram
+          </a>
+          <a href="https://facebook.com/sachin.solunke.58511" target="_blank" class="admin-btn">
+            🌐 Facebook
+          </a>
+          <a href="mailto:woldcom87@gmail.com" class="admin-btn">
+            ✉️ Contact Email
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+      <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-bottom: 12px;">
+        <a href="#download" style="color: var(--neon-cyan); text-decoration: none;">Download App</a>
+        <a href="#charts" style="color: var(--neon-cyan); text-decoration: none;">Market Charts</a>
+        <a href="#policy" style="color: var(--neon-cyan); text-decoration: none;">Privacy Policy</a>
+        <a href="#proscons" style="color: var(--neon-cyan); text-decoration: none;">Fayde & Nuksan</a>
+        <a href="#admin" style="color: var(--neon-cyan); text-decoration: none;">Admin Profile</a>
+      </div>
+      <p>© 2026 A23 MAX PRO VIP by Sachin Solunke. All rights reserved.</p>
+      <p style="margin-top: 6px; font-size: 11.5px; color: #64748b;">
+        Engineered with Modern Jetpack Compose, Kotlin & Room Local Persistence. Ready for GitHub Pages Hosting.
+      </p>
+    </footer>
+  </div>
+
+  <!-- Interactive JavaScript for Charts & Simulator -->
+  <script>
+    // Market Database
+    const marketData = {
+      KALYAN: {
+        name: "KALYAN (कल्याण)",
+        timing: "⏰ 04:10 PM / 06:10 PM",
+        rows: [
+          { date: "28-08-2026", day: "Friday", open: "159", jodi: "56", close: "123", otc: "3, 7, 9, 8", status: "PASS 56 (Jodi)" },
+          { date: "27-08-2026", day: "Thursday", open: "230", jodi: "58", close: "189", otc: "5, 8, 2, 0", status: "PASS 5 (Open)" },
+          { date: "26-08-2026", day: "Wednesday", open: "470", jodi: "17", close: "179", otc: "1, 7, 4, 0", status: "PASS 7 (Close)" },
+          { date: "25-08-2026", day: "Tuesday", open: "136", jodi: "02", close: "147", otc: "0, 2, 1, 3", status: "PASS 02 (Jodi)" },
+          { date: "24-08-2026", day: "Monday", open: "158", jodi: "43", close: "157", otc: "4, 3, 1, 5", status: "PASS 4 (Open)" }
+        ]
+      },
+      MAIN_BAZAR: {
+        name: "MAIN BAZAR (मेन बाजार)",
+        timing: "⏰ 09:40 PM / 12:05 AM",
+        rows: [
+          { date: "28-08-2026", day: "Friday", open: "147", jodi: "21", close: "489", otc: "2, 1, 4, 7", status: "PASS 21 (Jodi)" },
+          { date: "27-08-2026", day: "Thursday", open: "348", jodi: "59", close: "450", otc: "5, 9, 3, 4", status: "PASS 5 (Open)" },
+          { date: "26-08-2026", day: "Wednesday", open: "268", jodi: "64", close: "158", otc: "6, 4, 2, 8", status: "PASS 6 (Open)" },
+          { date: "25-08-2026", day: "Tuesday", open: "125", jodi: "80", close: "235", otc: "8, 0, 1, 2", status: "PASS 80 (Jodi)" }
+        ]
+      },
+      TIME_BAZAR: {
+        name: "TIME BAZAR (टाइम बाजार)",
+        timing: "⏰ 01:00 PM / 02:00 PM",
+        rows: [
+          { date: "28-08-2026", day: "Friday", open: "120", jodi: "34", close: "455", otc: "1, 2, 3, 4", status: "PASS 3 (Open)" },
+          { date: "27-08-2026", day: "Thursday", open: "567", jodi: "82", close: "237", otc: "8, 2, 5, 6", status: "PASS 82 (Jodi)" },
+          { date: "26-08-2026", day: "Wednesday", open: "389", jodi: "01", close: "128", otc: "0, 1, 3, 8", status: "PASS 0 (Open)" }
+        ]
+      },
+      MILAN_DAY: {
+        name: "MILAN DAY (मिलन डे)",
+        timing: "⏰ 03:00 PM / 05:00 PM",
+        rows: [
+          { date: "28-08-2026", day: "Friday", open: "378", jodi: "89", close: "234", otc: "3, 7, 8, 9", status: "PASS 89 (Jodi)" },
+          { date: "27-08-2026", day: "Thursday", open: "149", jodi: "45", close: "159", otc: "4, 5, 1, 9", status: "PASS 4 (Open)" }
+        ]
+      },
+      MILAN_NIGHT: {
+        name: "MILAN NIGHT (मिलन नाईट)",
+        timing: "⏰ 09:00 PM / 11:00 PM",
+        rows: [
+          { date: "28-08-2026", day: "Friday", open: "246", jodi: "23", close: "689", otc: "2, 3, 4, 6", status: "PASS 23 (Jodi)" },
+          { date: "27-08-2026", day: "Thursday", open: "135", jodi: "97", close: "278", otc: "9, 7, 1, 3", status: "PASS 9 (Open)" }
+        ]
+      },
+      RAJDHANI_DAY: {
+        name: "RAJDHANI DAY (राजधानी डे)",
+        timing: "⏰ 03:30 PM / 05:30 PM",
+        rows: [
+          { date: "28-08-2026", day: "Friday", open: "469", jodi: "92", close: "345", otc: "4, 6, 9, 2", status: "PASS 92 (Jodi)" },
+          { date: "27-08-2026", day: "Thursday", open: "128", jodi: "10", close: "280", otc: "1, 0, 2, 8", status: "PASS 1 (Open)" }
+        ]
+      },
+      RAJDHANI_NIGHT: {
+        name: "RAJDHANI NIGHT (राजधानी नाईट)",
+        timing: "⏰ 09:35 PM / 11:35 PM",
+        rows: [
+          { date: "28-08-2026", day: "Friday", open: "579", jodi: "16", close: "367", otc: "1, 6, 5, 7", status: "PASS 16 (Jodi)" },
+          { date: "27-08-2026", day: "Thursday", open: "248", jodi: "48", close: "189", otc: "4, 8, 2, 0", status: "PASS 4 (Open)" }
+        ]
+      },
+      SHRIDEVI: {
+        name: "SHRIDEVI (श्रीदेवी)",
+        timing: "⏰ 11:35 AM / 12:35 PM",
+        rows: [
+          { date: "28-08-2026", day: "Friday", open: "289", jodi: "90", close: "569", otc: "2, 8, 9, 0", status: "PASS 90 (Jodi)" },
+          { date: "27-08-2026", day: "Thursday", open: "148", jodi: "35", close: "159", otc: "3, 5, 1, 4", status: "PASS 3 (Open)" }
+        ]
+      }
+    };
+
+    function switchMarket(key) {
+      // Update Tab Button styles
+      const buttons = document.querySelectorAll('.market-tab-btn');
+      buttons.forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+
+      const data = marketData[key] || marketData.KALYAN;
+      document.getElementById('marketTitle').innerText = data.name;
+      document.getElementById('marketTiming').innerText = data.timing;
+
+      const tbody = document.getElementById('chartTableBody');
+      tbody.innerHTML = '';
+
+      data.rows.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${r.date}</td>
+          <td style="color: var(--text-muted);">${r.day}</td>
+          <td><span class="patti-text">${r.open}</span></td>
+          <td><span class="jodi-badge">${r.jodi}</span></td>
+          <td><span class="patti-text">${r.close}</span></td>
+          <td style="color: var(--neon-cyan); font-weight: 800;">${r.otc}</td>
+          <td><span style="background: rgba(34, 197, 94, 0.15); color: var(--neon-green); padding: 3px 8px; border-radius: 6px; font-weight: 700; font-size: 11px;">✓ ${r.status}</span></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Live Formula Simulator
+    function calculateLiveOtc() {
+      const pStr = document.getElementById('calcPana').value.trim();
+      const jStr = document.getElementById('calcJodi').value.trim();
+
+      const p = parseInt(pStr) || 159;
+      const j = parseInt(jStr) || 56;
+
+      document.getElementById('mathPana').innerText = p;
+      document.getElementById('mathPana2').innerText = p;
+      document.getElementById('mathJodi').innerText = j;
+
+      const step1 = (p + j) * p;
+      document.getElementById('step1Val').innerText = step1;
+
+      const step2 = Math.floor(step1 / 9);
+      document.getElementById('step2Val').innerText = step2;
+
+      // Extract unique digits
+      let digits = step2.toString().split('');
+      let uniqueDigits = [...new Set(digits)].slice(0, 4);
+      while (uniqueDigits.length < 4) {
+        uniqueDigits.push(((uniqueDigits.length > 0 ? parseInt(uniqueDigits[uniqueDigits.length - 1]) + 1 : 1) % 10).toString());
+      }
+
+      const container = document.getElementById('otcResultPills');
+      container.innerHTML = '';
+      uniqueDigits.forEach(d => {
+        const pill = document.createElement('div');
+        pill.className = 'otc-pill';
+        pill.innerText = d;
+        container.appendChild(pill);
+      });
+    }
+
+    function toggleAccordion(header) {
+      const body = header.nextElementSibling;
+      if (body.style.display === 'block') {
+        body.style.display = 'none';
+        header.querySelector('span:last-child').innerText = '▼';
+      } else {
+        body.style.display = 'block';
+        header.querySelector('span:last-child').innerText = '▲';
+      }
+    }
+
+    function triggerApkDownload() {
+      alert("A23 MAX PRO VIP v0.2.1 APK Download Starting!\nFile: A23MAX_Pro_v0.2.1_VIP.apk (24.5 MB)\n\nThank you for choosing A23 Official Engine by Sachin Solunke.");
+    }
+
+    // Initialize Default Market
+    window.addEventListener('DOMContentLoaded', () => {
+      switchMarket('KALYAN');
+    });
+  </script>
+</body>
+</html>

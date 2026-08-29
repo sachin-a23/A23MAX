@@ -33,10 +33,18 @@ class A23Repository {
     private val marketHistoryMap: MutableMap<String, List<MarketHistoryEntry>> = mutableMapOf()
     private val marketSummaryMap: MutableMap<String, MarketHistorySummary> = mutableMapOf()
     private var lastSyncReport: SyncReportData? = null
+    private var currentActiveFormula: com.example.model.FormulaConfig = com.example.model.FormulaConfig()
 
     init {
         initializeDefaultData()
     }
+
+    fun setActiveFormula(config: com.example.model.FormulaConfig) {
+        currentActiveFormula = config
+        recalculatePredictionsWithFormula(config)
+    }
+
+    fun getActiveFormula(): com.example.model.FormulaConfig = currentActiveFormula
 
     fun normalizeMarketKey(rawName: String): String {
         val clean = rawName.trim().uppercase()
@@ -87,7 +95,10 @@ class A23Repository {
                 step2Result = calc.step2Result,
                 step3Formula = calc.step3Formula,
                 calculatedOtcDigits = calc.otcDigits,
-                superJodiList = calc.superJodis
+                superJodiList = calc.superJodis,
+                vipMasterJodis = calc.vipMasterJodis,
+                allCrossJodis = calc.allCrossJodis,
+                dominantGap = calc.dominantGap
             )
             updatedList.add(updated)
         }
@@ -270,7 +281,7 @@ class A23Repository {
         val jodiInt = latestValid?.resultJodi?.toIntOrNull() ?: 90
         val closePanaInt = latestValid?.resultPanaClose?.toIntOrNull() ?: 569
 
-        val calc = FormulaCalculator.calculate(openPanaInt, jodiInt, 9)
+        val calc = FormulaCalculator.calculateWithConfig(openPanaInt, jodiInt, currentActiveFormula)
         val todayDate = DateUtils.getTodayLiveDate()
         val lastDate = latestValid?.date ?: DateUtils.getYesterdayDate()
 
@@ -299,7 +310,10 @@ class A23Repository {
             step2Result = calc.step2Result,
             step3Formula = calc.step3Formula,
             calculatedOtcDigits = calc.otcDigits,
-            superJodiList = calc.superJodis
+            superJodiList = calc.superJodis,
+            vipMasterJodis = calc.vipMasterJodis,
+            allCrossJodis = calc.allCrossJodis,
+            dominantGap = calc.dominantGap
         )
 
         val existingIdx = cachedPredictions.indexOfFirst { it.id == prediction.id }

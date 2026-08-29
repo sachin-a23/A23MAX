@@ -25,6 +25,37 @@ object WallpaperManager {
     private const val KEY_GLASS_BLUR = "key_glass_blur"
 
     /**
+     * Copies selected avatar image from Gallery Uri into internal app files directory
+     * so it permanently persists for the admin/user profile.
+     */
+    fun saveAvatarFromUri(context: Context, uri: Uri): String? {
+        return try {
+            val avatarsDir = File(context.filesDir, "avatars")
+            if (!avatarsDir.exists()) {
+                avatarsDir.mkdirs()
+            }
+
+            val fileName = "admin_avatar_${System.currentTimeMillis()}.jpg"
+            val destFile = File(avatarsDir, fileName)
+
+            context.contentResolver.openInputStream(uri)?.use { input: InputStream ->
+                val bitmap = BitmapFactory.decodeStream(input)
+                if (bitmap != null) {
+                    FileOutputStream(destFile).use { out ->
+                        bitmap.compress(Bitmap.CompressFormat.JPEG, 92, out)
+                    }
+                    destFile.absolutePath
+                } else {
+                    null
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    /**
      * Copies selected image from Gallery Uri into internal app files directory
      * so it permanently persists and doesn't expire or lose permissions.
      */
@@ -154,10 +185,13 @@ object WallpaperManager {
 
     private const val KEY_USER_ID = "key_user_id"
     private const val KEY_USER_NAME = "key_user_name"
+    private const val KEY_USER_PHONE = "key_user_phone"
+    private const val KEY_USER_CITY = "key_user_city"
     private const val KEY_USER_ROLE = "key_user_role"
     private const val KEY_USER_EMAIL = "key_user_email"
     private const val KEY_USER_STATUS = "key_user_status"
     private const val KEY_USER_PHOTO_URI = "key_user_photo_uri"
+    private const val KEY_USER_IS_AUTH = "key_user_is_auth"
 
     fun saveUserProfile(context: Context, profile: com.example.model.UserProfile) {
         try {
@@ -165,10 +199,13 @@ object WallpaperManager {
             prefs.edit()
                 .putString(KEY_USER_ID, profile.userId)
                 .putString(KEY_USER_NAME, profile.userName)
+                .putString(KEY_USER_PHONE, profile.phoneNumber)
+                .putString(KEY_USER_CITY, profile.city)
                 .putString(KEY_USER_ROLE, profile.role)
                 .putString(KEY_USER_EMAIL, profile.email)
                 .putString(KEY_USER_STATUS, profile.status)
                 .putString(KEY_USER_PHOTO_URI, profile.profilePhotoUri ?: "")
+                .putBoolean(KEY_USER_IS_AUTH, profile.isAuthenticated)
                 .apply()
         } catch (e: Exception) {
             e.printStackTrace()
@@ -180,21 +217,78 @@ object WallpaperManager {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             val id = prefs.getString(KEY_USER_ID, defaultProfile.userId) ?: defaultProfile.userId
             val name = prefs.getString(KEY_USER_NAME, defaultProfile.userName) ?: defaultProfile.userName
+            val phone = prefs.getString(KEY_USER_PHONE, defaultProfile.phoneNumber) ?: defaultProfile.phoneNumber
+            val city = prefs.getString(KEY_USER_CITY, defaultProfile.city) ?: defaultProfile.city
             val role = prefs.getString(KEY_USER_ROLE, defaultProfile.role) ?: defaultProfile.role
             val email = prefs.getString(KEY_USER_EMAIL, defaultProfile.email) ?: defaultProfile.email
             val status = prefs.getString(KEY_USER_STATUS, defaultProfile.status) ?: defaultProfile.status
             val photoUri = prefs.getString(KEY_USER_PHOTO_URI, null)?.takeIf { it.isNotBlank() }
+            val isAuth = prefs.getBoolean(KEY_USER_IS_AUTH, false)
 
             defaultProfile.copy(
                 userId = id,
                 userName = name,
+                phoneNumber = phone,
+                city = city,
                 role = role,
                 email = email,
                 status = status,
-                profilePhotoUri = photoUri ?: defaultProfile.profilePhotoUri
+                profilePhotoUri = photoUri ?: defaultProfile.profilePhotoUri,
+                isAuthenticated = isAuth
             )
         } catch (e: Exception) {
             defaultProfile
+        }
+    }
+
+    private const val KEY_AI_PROVIDER = "key_ai_provider"
+    private const val KEY_AI_GEMINI_KEY = "key_ai_gemini_key"
+    private const val KEY_AI_OPENAI_KEY = "key_ai_openai_key"
+    private const val KEY_AI_ZEN_KEY = "key_ai_zen_key"
+    private const val KEY_AI_ENDPOINT = "key_ai_endpoint"
+    private const val KEY_AI_MODEL = "key_ai_model"
+
+    fun saveAiSettings(context: Context, settings: com.example.model.AiEngineSettings) {
+        try {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit()
+                .putString(KEY_AI_PROVIDER, settings.selectedProvider.name)
+                .putString(KEY_AI_GEMINI_KEY, settings.geminiApiKey)
+                .putString(KEY_AI_OPENAI_KEY, settings.openAiApiKey)
+                .putString(KEY_AI_ZEN_KEY, settings.zenCloudApiKey)
+                .putString(KEY_AI_ENDPOINT, settings.customEndpointUrl)
+                .putString(KEY_AI_MODEL, settings.customModelName)
+                .apply()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    fun loadAiSettings(context: Context): com.example.model.AiEngineSettings {
+        return try {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val provName = prefs.getString(KEY_AI_PROVIDER, com.example.model.AiProvider.GEMINI.name)
+            val provider = try {
+                com.example.model.AiProvider.valueOf(provName ?: com.example.model.AiProvider.GEMINI.name)
+            } catch (e: Exception) {
+                com.example.model.AiProvider.GEMINI
+            }
+            val gemini = prefs.getString(KEY_AI_GEMINI_KEY, "") ?: ""
+            val openai = prefs.getString(KEY_AI_OPENAI_KEY, "") ?: ""
+            val zen = prefs.getString(KEY_AI_ZEN_KEY, "") ?: ""
+            val endpoint = prefs.getString(KEY_AI_ENDPOINT, "https://openrouter.ai/api/v1/chat/completions") ?: "https://openrouter.ai/api/v1/chat/completions"
+            val model = prefs.getString(KEY_AI_MODEL, "deepseek/deepseek-chat") ?: "deepseek/deepseek-chat"
+
+            com.example.model.AiEngineSettings(
+                selectedProvider = provider,
+                geminiApiKey = gemini,
+                openAiApiKey = openai,
+                zenCloudApiKey = zen,
+                customEndpointUrl = endpoint,
+                customModelName = model
+            )
+        } catch (e: Exception) {
+            com.example.model.AiEngineSettings()
         }
     }
 

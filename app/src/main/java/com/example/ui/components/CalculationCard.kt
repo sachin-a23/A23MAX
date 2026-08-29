@@ -8,6 +8,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +27,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -65,13 +67,15 @@ fun CalculationCard(
         label = "pulse_alpha"
     )
 
+    var showAllCrossJodis by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+
     GlassCard(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 14.dp, vertical = 6.dp)
             .testTag("market_card_${prediction.id}"),
-        backgroundColor = Color(0xEB0A101E),
-        borderColor = accentColor.copy(alpha = 0.4f),
+        backgroundColor = Color(0x3D0A1326), // Ultra-clear translucent plane glass
+        borderColor = accentColor.copy(alpha = 0.55f),
         cornerRadius = 18.dp
     ) {
         Column(
@@ -163,7 +167,7 @@ fun CalculationCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    prediction.otcList.forEach { digit ->
+                    prediction.otcList.take(4).forEach { digit ->
                         Box(
                             modifier = Modifier
                                 .size(36.dp)
@@ -191,44 +195,113 @@ fun CalculationCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             // -------------------------------------------------------------
-            // 3. JODI SECTION
+            // 3. JODI SECTION (Top 4 VIP Master + 16 OTC Cross)
             // -------------------------------------------------------------
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(10.dp))
-                    .background(Color(0x330F1A2E))
-                    .padding(horizontal = 10.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .background(Color(0x280F1A2E))
+                    .border(1.dp, Color(0x33F59E0B), RoundedCornerShape(10.dp))
+                    .padding(horizontal = 10.dp, vertical = 8.dp)
             ) {
-                Text(
-                    text = "Jodi :",
-                    color = NeonGoldBright,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Black,
-                    modifier = Modifier.width(62.dp)
-                )
-
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = Modifier.weight(1f)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val displayJodis = if (prediction.jodiList.isNotEmpty()) prediction.jodiList else prediction.superJodiList
-                    displayJodis.forEach { jodi ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Jodi :",
+                            color = NeonGoldBright,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Black,
+                            modifier = Modifier.width(62.dp)
+                        )
+
+                        // Top VIP Master 4 Jodis (Weekly 1 Jodi Pass Target)
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            val displayJodis = (if (prediction.vipMasterJodis.isNotEmpty()) prediction.vipMasterJodis else (if (prediction.jodiList.isNotEmpty()) prediction.jodiList else prediction.superJodiList)).take(4)
+                            displayJodis.forEach { jodi ->
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = Color(0x44F59E0B),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, NeonGoldBright)
+                                ) {
+                                    Text(
+                                        text = jodi,
+                                        color = NeonGoldBright,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Black,
+                                        fontFamily = FontFamily.Monospace,
+                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // 16 Cross Jodis Toggle Button
+                    if (prediction.allCrossJodis.isNotEmpty() || prediction.otcList.size >= 3) {
                         Surface(
                             shape = RoundedCornerShape(6.dp),
-                            color = Color(0x3306B6D4),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x6606B6D4))
+                            color = if (showAllCrossJodis) Color(0x4406B6D4) else Color(0x22FFFFFF),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, if (showAllCrossJodis) NeonCyanBright else Color.Gray),
+                            modifier = Modifier.clickable { showAllCrossJodis = !showAllCrossJodis }
                         ) {
                             Text(
-                                text = jodi,
-                                color = NeonCyanBright,
-                                fontSize = 14.sp,
+                                text = if (showAllCrossJodis) "Hide 16" else "16 Cross",
+                                color = if (showAllCrossJodis) NeonCyanBright else Color.LightGray,
+                                fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Monospace,
-                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
                             )
+                        }
+                    }
+                }
+
+                // Expanded 16 OTC Cross Matrix
+                if (showAllCrossJodis) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    val crossList = if (prediction.allCrossJodis.isNotEmpty()) prediction.allCrossJodis else {
+                        val cross = mutableListOf<String>()
+                        for (o in prediction.otcList) {
+                            for (c in prediction.otcList) {
+                                cross.add("$o$c")
+                            }
+                        }
+                        cross
+                    }
+                    Text(
+                        text = "16 OTC Direct Cross Combinations:",
+                        color = Color.LightGray,
+                        fontSize = 10.5.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        crossList.forEach { jodi ->
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = Color(0x2206B6D4),
+                                border = androidx.compose.foundation.BorderStroke(0.8.dp, Color(0x4406B6D4))
+                            ) {
+                                Text(
+                                    text = jodi,
+                                    color = NeonCyanBright,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace,
+                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -237,13 +310,14 @@ fun CalculationCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             // -------------------------------------------------------------
-            // 4. PANNE SECTION
+            // 4. PANNE SECTION (Official Panel Chart Mappings)
             // -------------------------------------------------------------
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(10.dp))
-                    .background(Color(0x330F1A2E))
+                    .background(Color(0x280F1A2E))
+                    .border(1.dp, Color(0x33A855F7), RoundedCornerShape(10.dp))
                     .padding(horizontal = 10.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -260,11 +334,11 @@ fun CalculationCard(
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                     modifier = Modifier.weight(1f)
                 ) {
-                    prediction.panneList.forEach { pana ->
+                    prediction.panneList.take(4).forEach { pana ->
                         Surface(
                             shape = RoundedCornerShape(6.dp),
                             color = Color(0x33A855F7),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x55A855F7))
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x66A855F7))
                         ) {
                             Text(
                                 text = pana,

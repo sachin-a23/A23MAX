@@ -53,6 +53,7 @@ import androidx.compose.material.icons.filled.Functions
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.ListAlt
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
@@ -69,6 +70,7 @@ import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.filled.Wallpaper
 import androidx.compose.material.icons.filled.Warning
+import com.example.ui.components.PolicyAndGuideDialog
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -113,6 +115,7 @@ import com.example.model.TextColorAccent
 import com.example.model.UserProfile
 import com.example.model.WallpaperStyle
 import com.example.ui.components.GlassCard
+import com.example.ui.components.AdminOwnerHeroCard
 import com.example.ui.theme.NeonCyan
 import com.example.ui.theme.NeonCyanBright
 import com.example.ui.theme.NeonGold
@@ -149,6 +152,10 @@ fun SettingsScreen(
     onUpdateProfile: (UserProfile) -> Unit,
     onSyncGithub: () -> Unit,
     onNavigateToLab: () -> Unit,
+    firebaseUser: com.example.data.FirebaseUserData? = null,
+    onOpenAuthDialog: () -> Unit = {},
+    onSignOut: () -> Unit = {},
+    onForgotPassword: (String) -> Unit = {},
     onOpenSyncReport: () -> Unit = {},
     onImportRawData: (String, String) -> Unit = { _, _ -> },
     onOpenPanelChart: (String) -> Unit = {},
@@ -157,6 +164,7 @@ fun SettingsScreen(
     onApplyFormula: (FormulaConfig) -> Unit = {},
     onSaveCustomFormula: (FormulaConfig, Boolean) -> Unit = { _, _ -> },
     onDeleteCustomFormula: (String) -> Unit = {},
+    onUpdateAdminPhoto: (Uri) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -170,6 +178,15 @@ fun SettingsScreen(
 
     val activeAccentColor = Color(settings.textColorAccent.hexValue)
     val activeSecondaryColor = Color(settings.textColorAccent.secondaryHex)
+
+    val adminPhotoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            onUpdateAdminPhoto(uri)
+            Toast.makeText(context, "Admin photo updated & saved successfully!", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -190,6 +207,188 @@ fun SettingsScreen(
         contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 90.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        // -------------------------------------------------------------
+        // 0. FIREBASE AUTHENTICATION & CLOUD ACCOUNT CARD
+        // -------------------------------------------------------------
+        item {
+            GlassCard(
+                backgroundColor = Color(0xF00A1322),
+                borderColor = if (firebaseUser != null) NeonGreen else NeonGoldBright,
+                cornerRadius = 18.dp
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (firebaseUser != null) Color(0x3322C55E) else Color(0x33F59E0B)
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (firebaseUser != null) Icons.Default.Verified else Icons.Default.AccountCircle,
+                                    contentDescription = "Firebase Auth",
+                                    tint = if (firebaseUser != null) NeonGreen else NeonGoldBright,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "FIREBASE AUTHENTICATION",
+                                    color = if (firebaseUser != null) NeonGreen else NeonGoldBright,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = 0.5.sp
+                                )
+                                Text(
+                                    text = if (firebaseUser != null) "Active Cloud Session: ${firebaseUser.email}" else "Login / Register / Password Reset",
+                                    color = Color.LightGray,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = if (firebaseUser != null) Color(0x3322C55E) else Color(0x33F59E0B)
+                        ) {
+                            Text(
+                                text = if (firebaseUser != null) "LOGGED IN" else "GUEST",
+                                color = if (firebaseUser != null) NeonGreen else NeonGoldBright,
+                                fontSize = 9.5.sp,
+                                fontWeight = FontWeight.Black,
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    if (firebaseUser != null) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color(0x33000000),
+                            border = BorderStroke(1.dp, Color(0x3322C55E)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("User Name:", color = Color.Gray, fontSize = 12.sp)
+                                    Text(firebaseUser.displayName, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Email Address:", color = Color.Gray, fontSize = 12.sp)
+                                    Text(firebaseUser.email, color = NeonCyanBright, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Firebase UID:", color = Color.Gray, fontSize = 12.sp)
+                                    Text(firebaseUser.uid.take(14) + "...", color = Color.LightGray, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = onOpenAuthDialog,
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0x3306B6D4),
+                                    contentColor = NeonCyanBright
+                                ),
+                                border = BorderStroke(1.dp, NeonCyan),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Switch / Account", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+                            }
+
+                            Button(
+                                onClick = {
+                                    onSignOut()
+                                    Toast.makeText(context, "Signed out successfully", Toast.LENGTH_SHORT).show()
+                                },
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0x33EF4444),
+                                    contentColor = NeonRed
+                                ),
+                                border = BorderStroke(1.dp, NeonRed),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Sign Out", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    } else {
+                        Text(
+                            text = "Login with your Firebase account or create a new account to unlock cloud formula sync, backup recovery, and creator tools. Forgot password link is also supported.",
+                            color = Color(0xFFCBD5E1),
+                            fontSize = 11.5.sp,
+                            lineHeight = 16.sp
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = onOpenAuthDialog,
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = NeonGoldBright,
+                                    contentColor = Color.Black
+                                ),
+                                modifier = Modifier
+                                    .weight(1.2f)
+                                    .testTag("settings_login_btn")
+                            ) {
+                                Text("🔑 Login / Register", fontSize = 12.sp, fontWeight = FontWeight.Black)
+                            }
+
+                            OutlinedButton(
+                                onClick = onOpenAuthDialog,
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonCyanBright),
+                                border = BorderStroke(1.dp, NeonCyanBright),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("settings_forgot_btn")
+                            ) {
+                                Text("Forgot 🔑", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+        }
         // -------------------------------------------------------------
         // 1. HD WALLPAPERS & VISUAL GLASS CUSTOMIZATION SUITE
         // -------------------------------------------------------------
@@ -1315,23 +1514,22 @@ fun SettingsScreen(
         }
 
         // -------------------------------------------------------------
-        // 9. STYLISH ADMIN PANEL & VIP DEVELOPER PROFILE (SACHIN SOLUNKE)
+        // 8.5. MARKET OPEN/CLOSE 15-MINUTE TIMING ALERTS & NOTIFICATIONS
         // -------------------------------------------------------------
         item {
             GlassCard(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .testTag("stylish_admin_panel_card"),
-                backgroundColor = Color(0xF20B101D),
+                    .testTag("market_timing_alerts_card"),
+                backgroundColor = Color(0x38091122),
                 borderColor = NeonGoldBright.copy(alpha = 0.6f),
-                cornerRadius = 22.dp
+                cornerRadius = 18.dp
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp)
                 ) {
-                    // Top Header with verified badge
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1339,307 +1537,52 @@ fun SettingsScreen(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                imageVector = Icons.Default.AdminPanelSettings,
-                                contentDescription = "Admin Panel",
+                                imageVector = Icons.Default.Notifications,
+                                contentDescription = "Market Notifications",
                                 tint = NeonGoldBright,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(22.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "STYLISH ADMIN PANEL",
-                                color = NeonGoldBright,
+                                text = "Market 15-Min Timing Alerts",
+                                color = Color.White,
                                 fontSize = 15.sp,
-                                fontWeight = FontWeight.Black,
-                                letterSpacing = 0.8.sp
+                                fontWeight = FontWeight.Bold
                             )
                         }
 
                         Surface(
-                            shape = RoundedCornerShape(20.dp),
+                            shape = RoundedCornerShape(6.dp),
                             color = Color(0x3322C55E),
                             border = androidx.compose.foundation.BorderStroke(1.dp, NeonGreen)
                         ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(6.dp)
-                                        .clip(CircleShape)
-                                        .background(NeonGreen)
-                                )
-                                Spacer(modifier = Modifier.width(5.dp))
-                                Text(
-                                    text = "VERIFIED DEVELOPER",
-                                    color = NeonGreen,
-                                    fontSize = 9.sp,
-                                    fontWeight = FontWeight.Black,
-                                    letterSpacing = 0.5.sp
-                                )
-                            }
+                            Text(
+                                text = "15-MIN ACTIVE ⏰",
+                                color = NeonGreen,
+                                fontSize = 9.5.sp,
+                                fontWeight = FontWeight.Black,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "Market open ya close hone se thik 15 minute pehle phone par instant notification alert receive hoga taki aapka koi calculation miss na ho:",
+                        color = Color.LightGray,
+                        fontSize = 12.sp
+                    )
 
-                    // Hero Admin Profile Box (Fixed Official Admin Details with Stylish Photo Support)
-                    Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = Color(0x400F172A),
-                        border = androidx.compose.foundation.BorderStroke(1.2.dp, Color(0x4DF59E0B)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(14.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                // Avatar with Cyber Gradient Ring & Image Support
-                                Box(
-                                    modifier = Modifier
-                                        .size(68.dp)
-                                        .clip(CircleShape)
-                                        .background(
-                                            Brush.sweepGradient(
-                                                listOf(
-                                                    NeonGoldBright,
-                                                    NeonCyanBright,
-                                                    Color(0xFFA855F7),
-                                                    NeonGoldBright
-                                                )
-                                            )
-                                        )
-                                        .clickable { photoPickerLauncher.launch("image/*") }
-                                        .padding(2.5.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .clip(CircleShape)
-                                            .background(Color(0xFF080C14)),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        if (!userProfile.profilePhotoUri.isNullOrBlank()) {
-                                            AsyncImage(
-                                                model = userProfile.profilePhotoUri,
-                                                contentDescription = "Admin Photo",
-                                                contentScale = ContentScale.Crop,
-                                                modifier = Modifier
-                                                    .fillMaxSize()
-                                                    .clip(CircleShape)
-                                            )
-                                        } else {
-                                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                Text(
-                                                    text = "SS",
-                                                    color = NeonGoldBright,
-                                                    fontSize = 20.sp,
-                                                    fontWeight = FontWeight.Black
-                                                )
-                                            }
-                                        }
-                                    }
+                    Spacer(modifier = Modifier.height(10.dp))
 
-                                    // Floating Camera Upload / VIP Tag
-                                    Surface(
-                                        shape = CircleShape,
-                                        color = if (!userProfile.profilePhotoUri.isNullOrBlank()) NeonCyanBright else NeonGoldBright,
-                                        modifier = Modifier
-                                            .align(Alignment.BottomEnd)
-                                            .size(20.dp),
-                                        shadowElevation = 4.dp
-                                    ) {
-                                        Box(
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.CameraAlt,
-                                                contentDescription = "Upload Photo",
-                                                tint = Color.Black,
-                                                modifier = Modifier.size(12.dp)
-                                            )
-                                        }
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.width(14.dp))
-
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Text(
-                                            text = userProfile.userName.ifBlank { "Sachin Solunke" },
-                                            color = Color.White,
-                                            fontSize = 17.sp,
-                                            fontWeight = FontWeight.Black,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                            modifier = Modifier.weight(1f, fill = false)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Icon(
-                                            imageVector = Icons.Default.Verified,
-                                            contentDescription = "Verified Admin",
-                                            tint = NeonCyanBright,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
-
-                                    Text(
-                                        text = userProfile.role.ifBlank { "VIP Lead Admin & Analyst" },
-                                        color = NeonGoldBright,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-
-                                    Spacer(modifier = Modifier.height(4.dp))
-
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Surface(
-                                            shape = RoundedCornerShape(6.dp),
-                                            color = Color(0x3306B6D4),
-                                            border = androidx.compose.foundation.BorderStroke(0.8.dp, NeonCyan.copy(alpha = 0.5f)),
-                                            modifier = Modifier.clickable {
-                                                copyToClipboard(context, userProfile.userId.ifBlank { "A23-8411" }, "Admin ID")
-                                            }
-                                        ) {
-                                            Row(
-                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Text(
-                                                    text = "ID: ${userProfile.userId.ifBlank { "A23-8411" }}",
-                                                    color = NeonCyanBright,
-                                                    fontSize = 10.sp,
-                                                    fontWeight = FontWeight.Black,
-                                                    maxLines = 1
-                                                )
-                                                Spacer(modifier = Modifier.width(4.dp))
-                                                Icon(
-                                                    imageVector = Icons.Default.ContentCopy,
-                                                    contentDescription = "Copy ID",
-                                                    tint = NeonCyanBright,
-                                                    modifier = Modifier.size(10.dp)
-                                                )
-                                            }
-                                        }
-
-                                        Spacer(modifier = Modifier.width(6.dp))
-
-                                        Surface(
-                                            shape = RoundedCornerShape(6.dp),
-                                            color = Color(0x3322C55E),
-                                            modifier = Modifier.weight(1f, fill = false)
-                                        ) {
-                                            Text(
-                                                text = "● ${userProfile.status.ifBlank { "Active 24/7" }}",
-                                                color = NeonGreen,
-                                                fontSize = 9.5.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
-                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(10.dp))
-
-                            // Photo Management Row (Upload / Change / Remove)
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = Color(0x2206B6D4),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, NeonCyan.copy(alpha = 0.6f)),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable { photoPickerLauncher.launch("image/*") }
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.CameraAlt,
-                                            contentDescription = "Upload Photo",
-                                            tint = NeonCyanBright,
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = if (userProfile.profilePhotoUri.isNullOrBlank()) "📷 Add My Photo" else "📷 Change Photo",
-                                            color = NeonCyanBright,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            maxLines = 1
-                                        )
-                                    }
-                                }
-
-                                if (!userProfile.profilePhotoUri.isNullOrBlank()) {
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = Color(0x22EF4444),
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, NeonRed.copy(alpha = 0.6f)),
-                                        modifier = Modifier.clickable {
-                                            onUpdateProfile(userProfile.copy(profilePhotoUri = null))
-                                            Toast.makeText(context, "Photo removed", Toast.LENGTH_SHORT).show()
-                                        }
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.DeleteOutline,
-                                                contentDescription = "Remove Photo",
-                                                tint = NeonRed,
-                                                modifier = Modifier.size(14.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text(
-                                                text = "Remove",
-                                                color = NeonRed,
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(10.dp))
-
-                            // Email pill row with Copy Button
+                    // Market Timings Grid
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        com.example.util.MarketNotificationManager.DEFAULT_MARKET_SCHEDULES.forEach { sched ->
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
-                                color = Color(0x2B06B6D4),
-                                border = androidx.compose.foundation.BorderStroke(0.8.dp, Color(0x4D06B6D4)),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        copyToClipboard(context, "woldcom87@gmail.com", "Admin Email")
-                                    }
+                                color = Color(0x22000000),
+                                border = androidx.compose.foundation.BorderStroke(0.6.dp, Color(0x4464748B)),
+                                modifier = Modifier.fillMaxWidth()
                             ) {
                                 Row(
                                     modifier = Modifier
@@ -1648,111 +1591,32 @@ fun SettingsScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Row(
-                                        modifier = Modifier.weight(1f),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Email,
-                                            contentDescription = "Email",
-                                            tint = NeonCyanBright,
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = sched.marketName,
+                                        color = Color.White,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                         Text(
-                                            text = "woldcom87@gmail.com",
-                                            color = Color.White,
+                                            text = "Open: ${sched.openTimeFormatted}",
+                                            color = NeonCyanBright,
                                             fontSize = 11.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
+                                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                                        )
+                                        Text(
+                                            text = "•",
+                                            color = Color.Gray,
+                                            fontSize = 11.sp
+                                        )
+                                        Text(
+                                            text = "Close: ${sched.closeTimeFormatted}",
+                                            color = NeonGoldBright,
+                                            fontSize = 11.sp,
+                                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
                                         )
                                     }
-
-                                    Surface(
-                                        shape = RoundedCornerShape(4.dp),
-                                        color = Color(0x3306B6D4)
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.ContentCopy,
-                                                contentDescription = "Copy",
-                                                tint = NeonCyanBright,
-                                                modifier = Modifier.size(10.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(3.dp))
-                                            Text(
-                                                text = "Copy",
-                                                color = NeonCyanBright,
-                                                fontSize = 9.sp,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(10.dp))
-
-                            // Fixed Admin Action Buttons (Share Card & Copy Info)
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Button(
-                                    onClick = {
-                                        val adminProfile = userProfile.copy(
-                                            userId = userProfile.userId.ifBlank { "A23-8411" },
-                                            userName = userProfile.userName.ifBlank { "Sachin Solunke" },
-                                            role = userProfile.role.ifBlank { "VIP Lead Admin & Analyst" },
-                                            email = "woldcom87@gmail.com",
-                                            status = "Active / Online 24/7"
-                                        )
-                                        shareAdminCard(context, adminProfile)
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(10.dp),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color(0x3306B6D4),
-                                        contentColor = NeonCyanBright
-                                    ),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, NeonCyan)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Share,
-                                        contentDescription = "Share",
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Share Admin Card", fontWeight = FontWeight.Bold, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                }
-
-                                Button(
-                                    onClick = {
-                                        copyToClipboard(
-                                            context,
-                                            "👑 A23 VIP ADMIN\n👤 Name: ${userProfile.userName.ifBlank { "Sachin Solunke" }}\n🆔 Admin ID: ${userProfile.userId.ifBlank { "A23-8411" }}\n⭐ Role: ${userProfile.role.ifBlank { "VIP Lead Admin & Analyst" }}\n📧 Email: woldcom87@gmail.com\n🌐 Web: https://sachin-a23.github.io/A23Gaming/",
-                                            "Admin Full Info"
-                                        )
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(10.dp),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color(0x33F59E0B),
-                                        contentColor = NeonGoldBright
-                                    ),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, NeonGold)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.ContentCopy,
-                                        contentDescription = "Copy Contact",
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Copy Admin Info", fontWeight = FontWeight.Bold, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 }
                             }
                         }
@@ -1760,196 +1624,334 @@ fun SettingsScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // 4-Column Quick Metrics Grid
-                    Row(
+                    // Test Alert Button
+                    Button(
+                        onClick = {
+                            com.example.util.MarketNotificationManager.showMarketAlertNotification(
+                                context = context,
+                                marketName = "KALYAN",
+                                isClose = false,
+                                timeLabel = "04:10 PM"
+                            )
+                            Toast.makeText(context, "🔔 Test Notification sent! Check your notification tray.", Toast.LENGTH_LONG).show()
+                        },
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0x33F59E0B),
+                            contentColor = NeonGoldBright
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, NeonGoldBright)
                     ) {
-                        listOf(
-                            Triple("MARKETS", "6 Live", NeonGreen),
-                            Triple("ENGINE", "v0.2.1", NeonCyanBright),
-                            Triple("ACCESS", "Root VIP", NeonGoldBright),
-                            Triple("SYNC", "Cloud OK", Color(0xFFA855F7))
-                        ).forEach { (label, value, tint) ->
-                            Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = Color(0x260F172A),
-                                border = androidx.compose.foundation.BorderStroke(0.8.dp, tint.copy(alpha = 0.35f)),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(vertical = 6.dp, horizontal = 4.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Text(text = label, color = Color.Gray, fontSize = 8.sp, fontWeight = FontWeight.Bold)
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(text = value, color = tint, fontSize = 11.sp, fontWeight = FontWeight.Black)
-                                }
-                            }
-                        }
+                        Icon(imageVector = Icons.Default.Notifications, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Send Test 15-Min Alert Notification", fontWeight = FontWeight.Bold, fontSize = 12.5.sp)
                     }
+                }
+            }
+        }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+        // -------------------------------------------------------------
+        // 9. STYLISH ADMIN & APP OWNER PANEL (SACHIN SOLUNKE - FOUNDER)
+        // -------------------------------------------------------------
+        item {
+            AdminOwnerHeroCard(
+                userProfile = userProfile,
+                onUpdateAdminPhoto = onUpdateAdminPhoto
+            )
+        }
 
-                    // Social & Contact Grid Header
+        // -------------------------------------------------------------
+        // 9B. APP PERMISSIONS & SYSTEM ACCESS MANAGER (ACTIVATE / DEACTIVATE)
+        // -------------------------------------------------------------
+        item {
+            GlassCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("app_permissions_manager_card"),
+                backgroundColor = Color(0x350A1224),
+                borderColor = NeonCyanBright.copy(alpha = 0.55f),
+                cornerRadius = 20.dp
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "OFFICIAL CONNECT & SOCIAL LINKS:",
-                            color = Color.LightGray,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = 0.5.sp
-                        )
-                        Text(
-                            text = "Tap to open",
-                            color = NeonGoldBright,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Security,
+                                contentDescription = "Permissions",
+                                tint = NeonCyanBright,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "APP PERMISSIONS & ACCESS",
+                                color = NeonCyanBright,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 0.6.sp
+                            )
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color(0x3306B6D4),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, NeonCyan)
+                        ) {
+                            Text(
+                                text = "CONTROL CENTER",
+                                color = NeonCyanBright,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Black,
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "Manage or deactivate on-device permissions (Storage, Notifications, Accessibility & Battery). Tap 'Manage' to toggle in system settings.",
+                        color = Color.LightGray,
+                        fontSize = 11.5.sp,
+                        lineHeight = 16.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Permissions items list
+                    val permissionsList = listOf(
+                        Triple("Storage & Files", "Required to save PDF Backtest Reports, Chart Images & Custom Wallpapers", "STORAGE"),
+                        Triple("Push Notifications", "Sends 15-minute live draw alerts, market opening/closing timers", "NOTIFICATIONS"),
+                        Triple("Accessibility / Auto-Sync", "Provides background sync with GitHub and live market updates", "ACCESSIBILITY"),
+                        Triple("Battery Optimization", "Allows uninterrupted background alerts without being killed by Android OS", "BATTERY")
+                    )
+
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        permissionsList.forEach { (permName, permDesc, permType) ->
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color(0x220F172A),
+                                border = androidx.compose.foundation.BorderStroke(0.8.dp, Color(0x3306B6D4)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(10.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = permName,
+                                                color = Color.White,
+                                                fontSize = 12.5.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Surface(
+                                                shape = RoundedCornerShape(4.dp),
+                                                color = Color(0x3322C55E)
+                                            ) {
+                                                Text(
+                                                    text = "ENABLED",
+                                                    color = NeonGreen,
+                                                    fontSize = 8.5.sp,
+                                                    fontWeight = FontWeight.Black,
+                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.5.dp)
+                                                )
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = permDesc,
+                                            color = Color.Gray,
+                                            fontSize = 10.sp,
+                                            lineHeight = 13.sp
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.width(8.dp))
+
+                                    Button(
+                                        onClick = {
+                                            try {
+                                                when (permType) {
+                                                    "NOTIFICATIONS" -> {
+                                                        val intent = Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                                            putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                                        }
+                                                        context.startActivity(intent)
+                                                    }
+                                                    "ACCESSIBILITY" -> {
+                                                        val intent = Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                                                        context.startActivity(intent)
+                                                    }
+                                                    else -> {
+                                                        val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                                            data = Uri.fromParts("package", context.packageName, null)
+                                                        }
+                                                        context.startActivity(intent)
+                                                    }
+                                                }
+                                            } catch (e: Exception) {
+                                                val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                                    data = Uri.fromParts("package", context.packageName, null)
+                                                }
+                                                context.startActivity(intent)
+                                            }
+                                        },
+                                        shape = RoundedCornerShape(8.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Color(0x3306B6D4),
+                                            contentColor = NeonCyanBright
+                                        ),
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, NeonCyan),
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                        modifier = Modifier.height(32.dp)
+                                    ) {
+                                        Text("Deactivate / Manage", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    // Grid of 6 interactive connection cards
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        // Row 1: WhatsApp & Telegram
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            AdminSocialGridItem(
-                                modifier = Modifier.weight(1f),
-                                title = "WhatsApp Group",
-                                subtitle = "VIP Group & Chat",
-                                brandColor = Color(0xFF25D366),
-                                icon = Icons.Default.Chat,
-                                onClick = {
-                                    openUrl(context, "https://wa.me/?text=Hello%20A23MAX%20Admin")
+                    // Open Full App Settings System Screen
+                    OutlinedButton(
+                        onClick = {
+                            try {
+                                val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                    data = Uri.fromParts("package", context.packageName, null)
                                 }
-                            )
-
-                            AdminSocialGridItem(
-                                modifier = Modifier.weight(1f),
-                                title = "Telegram Channel",
-                                subtitle = "@Open_network_Sachin",
-                                brandColor = Color(0xFF229ED9),
-                                icon = Icons.AutoMirrored.Filled.Send,
-                                onClick = {
-                                    openUrl(context, "https://t.me/Open_network_Sachin")
-                                }
-                            )
-                        }
-
-                        // Row 2: Instagram & Facebook
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            AdminSocialGridItem(
-                                modifier = Modifier.weight(1f),
-                                title = "Instagram VIP",
-                                subtitle = "@black_b.o.y__",
-                                brandColor = Color(0xFFE1306C),
-                                icon = Icons.Default.Star,
-                                onClick = {
-                                    openUrl(context, "https://www.instagram.com/black_b.o.y__?igsi=MWp5aWNqdWFqbjc3dg==")
-                                }
-                            )
-
-                            AdminSocialGridItem(
-                                modifier = Modifier.weight(1f),
-                                title = "Facebook Profile",
-                                subtitle = "Sachin Solunke",
-                                brandColor = Color(0xFF1877F2),
-                                icon = Icons.Default.Language,
-                                onClick = {
-                                    openUrl(context, "https://www.facebook.com/share/1KS9zaNsbU/")
-                                }
-                            )
-                        }
-
-                        // Row 3: Website & GitHub Raw Repository
-                        AdminSocialBannerItem(
-                            title = "GitHub Raw Data Repository & Web Portal",
-                            subtitle = "https://sachin-a23.github.io/A23Gaming/",
-                            brandColor = NeonCyanBright,
-                            icon = Icons.Default.Language,
-                            badgeText = "A23site",
-                            onClick = {
-                                openUrl(context, "https://sachin-a23.github.io/A23Gaming/")
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Cannot open settings", Toast.LENGTH_SHORT).show()
                             }
-                        )
-
-                        // Row 4: Official Developer Mail
-                        AdminSocialBannerItem(
-                            title = "Official Admin & Support Email",
-                            subtitle = "a23pro.developer@Gmail.com",
-                            brandColor = NeonGoldBright,
-                            icon = Icons.Default.Email,
-                            badgeText = "DIRECT DESK",
-                            onClick = {
-                                val intent = Intent(Intent.ACTION_SENDTO).apply {
-                                    data = Uri.parse("mailto:a23pro.developer@Gmail.com")
-                                    putExtra(Intent.EXTRA_SUBJECT, "A23MAX Admin Query & Support")
-                                }
-                                context.startActivity(Intent.createChooser(intent, "Send Email to Admin"))
-                            }
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    // Copy All Admin Links & Info Full-width Button
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = Color(0x22F59E0B),
-                        border = androidx.compose.foundation.BorderStroke(1.2.dp, NeonGoldBright),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable {
-                                val allInfo = """
-                                    A23MAX ADMIN CONTACT & SOCIAL PROFILES
-                                    --------------------------------------
-                                    👤 Admin: ${userProfile.userName} (${userProfile.role})
-                                    🆔 User ID: ${userProfile.userId}
-                                    ✉️ Primary Email: ${userProfile.email}
-                                    ✉️ Support Email: a23pro.developer@Gmail.com
-                                    
-                                    🔗 Social Links:
-                                    • Instagram: https://www.instagram.com/black_b.o.y__
-                                    • Telegram: https://t.me/Open_network_Sachin
-                                    • Website: https://sachin-a23.github.io/A23Gaming/
-                                    • Facebook: https://www.facebook.com/share/1KS9zaNsbU/
-                                    • Raw Data: https://raw.githubusercontent.com/sachin-a23/A23site/main/data.json
-                                """.trimIndent()
-                                copyToClipboard(context, allInfo, "All Admin Links & Info")
-                            }
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonCyanBright),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, NeonCyanBright.copy(alpha = 0.7f)),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 12.dp, horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        Icon(imageVector = Icons.Default.Shield, contentDescription = "System Settings", modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Open Full Device App Permissions Settings", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        // -------------------------------------------------------------
+        // 9C. A23 OFFICIAL GITHUB & COMPANION WEB PORTAL
+        // -------------------------------------------------------------
+        item {
+            GlassCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("github_companion_website_card"),
+                backgroundColor = Color(0x3509152B),
+                borderColor = Color(0x66A855F7),
+                cornerRadius = 20.dp
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                imageVector = Icons.Default.ContentCopy,
-                                contentDescription = "Copy All",
-                                tint = NeonGoldBright,
-                                modifier = Modifier.size(18.dp)
+                                imageVector = Icons.Default.Language,
+                                contentDescription = "Web Portal",
+                                tint = Color(0xFFC084FC),
+                                modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Copy All Admin Links & Info",
-                                color = NeonGoldBright,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Black
+                                text = "A23 COMPANION WEBSITE",
+                                color = Color(0xFFC084FC),
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 0.6.sp
                             )
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color(0x33A855F7),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFA855F7))
+                        ) {
+                            Text(
+                                text = "ONLINE / GITHUB",
+                                color = Color(0xFFE9D5FF),
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Black,
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "Official companion web portal hosting live market charts, A23 formula documentation, and developer verification.",
+                        color = Color.LightGray,
+                        fontSize = 11.5.sp,
+                        lineHeight = 16.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                openUrl(context, "https://sachin-a23.github.io/A23Gaming/")
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0x44A855F7),
+                                contentColor = Color(0xFFF3E8FF)
+                            ),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFA855F7))
+                        ) {
+                            Icon(imageVector = Icons.Default.OpenInNew, contentDescription = "Open Web", modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Open in Browser", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        Button(
+                            onClick = {
+                                openUrl(context, "https://raw.githubusercontent.com/sachin-a23/A23site/main/data.json")
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0x3306B6D4),
+                                contentColor = NeonCyanBright
+                            ),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, NeonCyan)
+                        ) {
+                            Icon(imageVector = Icons.Default.CloudDownload, contentDescription = "Raw JSON", modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Raw Data JSON", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -2066,43 +2068,72 @@ fun SettingsScreen(
         }
 
         // -------------------------------------------------------------
-        // 11. POLICY & WARNING
+        // 11. POLICY, TERMS, BENEFITS & RISKS (FAYDE & NUKSAN)
         // -------------------------------------------------------------
         item {
             GlassCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { showPolicyDialog = true },
-                backgroundColor = Color(0xDD1C1313),
-                borderColor = Color(0x66EF4444),
+                backgroundColor = Color(0xDD0D162B),
+                borderColor = NeonGoldBright.copy(alpha = 0.8f),
                 cornerRadius = 18.dp
             ) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(16.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Warning,
-                        contentDescription = "Warning",
-                        tint = NeonRed,
-                        modifier = Modifier.size(28.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            text = "App Info & Policy • Warning ⚠️",
-                            color = Color(0xFFFCA5A5),
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "Educational numerology calculation software. Tap to read policy.",
-                            color = Color.Gray,
-                            fontSize = 11.sp
-                        )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Security,
+                                contentDescription = "Policy",
+                                tint = NeonGoldBright,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "App & User Policy • फायदे व नुकसान",
+                                    color = NeonGoldBright,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Black
+                                )
+                                Text(
+                                    text = "Privacy, Terms of Use, Pros/Cons & Legal Guidelines",
+                                    color = NeonCyanBright,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0x33F59E0B),
+                            border = BorderStroke(1.dp, NeonGoldBright)
+                        ) {
+                            Text(
+                                text = "READ ALL",
+                                color = NeonGoldBright,
+                                fontSize = 9.5.sp,
+                                fontWeight = FontWeight.Black,
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                            )
+                        }
                     }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = "A23MAX 100% ऑन-डिवाइस सुरक्षित गणितीय सॉफ्टवेयर है। यहाँ ऐप प्राइवेसी, यूजर नियम, फायदे एवं संभावित जोखिमों (नुकसान से बचाव) की विस्तृत जानकारी पढ़ें।",
+                        color = Color.LightGray,
+                        fontSize = 11.5.sp,
+                        lineHeight = 16.sp
+                    )
                 }
             }
         }
@@ -2504,30 +2535,14 @@ fun SettingsScreen(
         )
     }
 
-    // Policy & Disclaimer Dialog
+    // Policy, Terms, Benefits & Risks Full Guide Dialog
     if (showPolicyDialog) {
-        AlertDialog(
-            onDismissRequest = { showPolicyDialog = false },
-            title = { Text("Warning & App Policy ⚠️", color = NeonRed, fontWeight = FontWeight.Bold) },
-            text = {
-                Column {
-                    Text(
-                        text = "A23MAX is an educational mathematical formula analyzer and numerology calculation tool. All predictions and calculated numbers are generated purely via fixed algebraic algorithms (Step 1 addition/multiplication and Step 2 division). This software does not promote gambling and is strictly intended for algorithmic study and analytical research.",
-                        color = Color.LightGray,
-                        fontSize = 13.sp,
-                        lineHeight = 18.sp
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = { showPolicyDialog = false },
-                    colors = ButtonDefaults.buttonColors(containerColor = NeonRed, contentColor = Color.White)
-                ) {
-                    Text("I Understand", fontWeight = FontWeight.Bold)
-                }
-            },
-            containerColor = Color(0xFF0F172A)
+        PolicyAndGuideDialog(
+            initialTab = 0,
+            onDismiss = { showPolicyDialog = false },
+            onOpenWebsite = {
+                openUrl(context, "https://sachin-a23.github.io/A23Gaming/")
+            }
         )
     }
 }

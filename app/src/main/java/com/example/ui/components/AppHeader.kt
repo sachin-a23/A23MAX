@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
+import com.example.data.FirebaseUserData
 import com.example.model.UserProfile
 import com.example.ui.theme.NeonCyan
 import com.example.ui.theme.NeonCyanBright
@@ -58,9 +59,11 @@ import com.example.ui.theme.NeonGreen
 @Composable
 fun AppHeader(
     userProfile: UserProfile,
+    firebaseUser: FirebaseUserData?,
     isSyncing: Boolean,
     onMenuClick: () -> Unit,
     onProfileClick: () -> Unit,
+    onAuthClick: () -> Unit,
     onSyncClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -78,8 +81,9 @@ fun AppHeader(
         modifier = modifier
             .fillMaxWidth()
             .statusBarsPadding(),
-        color = Color(0xD9080E18),
-        tonalElevation = 6.dp
+        color = Color(0x35080E18),
+        tonalElevation = 2.dp,
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x33F59E0B))
     ) {
         Row(
             modifier = Modifier
@@ -168,55 +172,77 @@ fun AppHeader(
                     )
                 }
 
-                // Profile Badge Chip
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = Color(0x33F59E0B),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x66F59E0B)),
-                    modifier = Modifier
-                        .clickable(onClick = onProfileClick)
-                        .testTag("profile_badge")
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                // Profile / Auth Badge Chip
+                if (firebaseUser != null) {
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = Color(0x3322C55E),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, NeonGreen.copy(alpha = 0.7f)),
+                        modifier = Modifier
+                            .clickable(onClick = onAuthClick)
+                            .testTag("profile_auth_badge")
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .clip(CircleShape)
-                                .background(NeonGold),
-                            contentAlignment = Alignment.Center
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            if (!userProfile.profilePhotoUri.isNullOrBlank()) {
-                                AsyncImage(
-                                    model = userProfile.profilePhotoUri,
-                                    contentDescription = "Profile Photo",
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize().clip(CircleShape)
+                            Box(
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clip(CircleShape)
+                                    .background(NeonGreen),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = firebaseUser.displayName.take(1).uppercase(),
+                                    color = Color.Black,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Black
                                 )
-                            } else {
-                                Icon(
-                                    imageVector = Icons.Default.Person,
-                                    contentDescription = "Profile",
-                                    tint = Color.Black,
-                                    modifier = Modifier.size(16.dp)
+                            }
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Column {
+                                Text(
+                                    text = "FIREBASE",
+                                    color = NeonGreen,
+                                    fontSize = 7.5.sp,
+                                    fontWeight = FontWeight.Black
+                                )
+                                Text(
+                                    text = firebaseUser.displayName.take(10),
+                                    color = Color.White,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Black,
+                                    maxLines = 1
                                 )
                             }
                         }
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Column {
-                            Text(
-                                text = "USER ID",
-                                color = Color.Gray,
-                                fontSize = 8.sp,
-                                fontWeight = FontWeight.Bold
+                    }
+                } else {
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = Color(0x33F59E0B),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x80F59E0B)),
+                        modifier = Modifier
+                            .clickable(onClick = onAuthClick)
+                            .testTag("auth_login_header_btn")
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AccountCircle,
+                                contentDescription = "Sign In",
+                                tint = NeonGoldBright,
+                                modifier = Modifier.size(16.dp)
                             )
+                            Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = userProfile.userId,
-                                color = Color.White,
+                                text = "Sign In 🔑",
+                                color = NeonGoldBright,
                                 fontSize = 11.sp,
-                                fontWeight = FontWeight.Black
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }

@@ -40,9 +40,14 @@ import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Science
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -90,7 +95,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.CalculationResult
+import com.example.data.DiscoveredFormulaCandidate
 import com.example.data.FormulaCalculator
+import com.example.data.FormulaDiscoveryEngine
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material.icons.filled.Close
+import com.example.model.MarketHistoryEntry
+import com.example.data.PanelPanaRepository
+import com.example.data.PanaType
 import com.example.model.BacktestDayResult
 import com.example.model.BacktestSummary
 import com.example.model.FormulaConfig
@@ -107,6 +121,14 @@ import com.example.util.PdfExportResult
 import com.example.util.PdfReportGenerator
 import java.util.Locale
 
+import com.example.model.AiBacktestReport
+import com.example.model.AiEngineSettings
+import com.example.model.AiGeneratedFormula
+import com.example.ui.components.AiEngineControlDeck
+
+private val NeonPurple = Color(0xFF8B5CF6)
+private val NeonPurpleBright = Color(0xFFA78BFA)
+
 data class FormulaMarketRanking(
     val formula: FormulaConfig,
     val summary: BacktestSummary
@@ -119,9 +141,18 @@ fun A23LabScreen(
     selectedMarket: String = "SHRIDEVI",
     allMarkets: List<String> = listOf("SHRIDEVI", "KALYAN", "TIME BAZAR", "MILAN", "RAJDHANI DAY", "MAIN BAZAR"),
     userProfile: UserProfile = UserProfile(),
+    aiSettings: AiEngineSettings = AiEngineSettings(),
+    onUpdateAiSettings: (AiEngineSettings) -> Unit = {},
+    aiGeneratedFormula: AiGeneratedFormula? = null,
+    aiBacktestReport: AiBacktestReport? = null,
+    isAiGenerating: Boolean = false,
+    onGenerateAiFormula: (marketName: String, prompt: String) -> Unit = { _, _ -> },
+    onRunAutomatedAiBacktest: (marketName: String) -> Unit = {},
+    onApplyAiFormula: (AiGeneratedFormula) -> Unit = {},
     onApplyFormula: (FormulaConfig) -> Unit = {},
     onSaveCustomFormula: (FormulaConfig, Boolean) -> Unit = { _, _ -> },
     onDeleteCustomFormula: (String) -> Unit = {},
+    onGetMarketHistory: (String) -> List<MarketHistoryEntry> = { emptyList() },
     onRunBacktest: (String, FormulaConfig, Int?) -> BacktestSummary = { market, formula, days ->
         FormulaCalculator.runBacktest(market, emptyList(), formula, days)
     },
@@ -260,6 +291,29 @@ fun A23LabScreen(
         mutableStateOf(workbenchBacktestSummary)
     }
     var showFullAuditRecordDialog by remember { mutableStateOf(false) }
+
+    // Formula Activation & Discovery States
+    var formulaToActivate by remember { mutableStateOf<FormulaConfig?>(null) }
+    var showPanelChartBrowserDialog by remember { mutableStateOf(false) }
+    var showPatternScannerDialog by remember { mutableStateOf(false) }
+    var discoveredFormulas by remember { mutableStateOf<List<DiscoveredFormulaCandidate>>(emptyList()) }
+    var isDiscoveringFormulas by remember { mutableStateOf(false) }
+
+    fun runAiFormulaDiscovery(market: String) {
+        isDiscoveringFormulas = true
+        val marketHistory = onGetMarketHistory(market)
+        val candidates = FormulaDiscoveryEngine.discoverFormulas(
+            marketName = market,
+            historyEntries = marketHistory,
+            limitCandidates = 8
+        )
+        discoveredFormulas = candidates
+        isDiscoveringFormulas = false
+    }
+
+    LaunchedEffect(currentLabMarket) {
+        runAiFormulaDiscovery(currentLabMarket)
+    }
 
     // Dialogs
     var showSaveDialog by remember { mutableStateOf(false) }
@@ -480,17 +534,47 @@ fun A23LabScreen(
                     currentMarket = currentLabMarket,
                     rankedFormulas = rankedFormulas,
                     activeFormula = activeFormula,
+                    discoveredFormulas = discoveredFormulas,
+                    isDiscoveringFormulas = isDiscoveringFormulas,
+                    latestOpenPana = testOpenPana,
+                    latestJodi = testJodi,
+                    latestDrawLabel = latestMarketDrawLabel,
+                    aiSettings = aiSettings,
+                    onUpdateAiSettings = onUpdateAiSettings,
+                    aiGeneratedFormula = aiGeneratedFormula,
+                    aiBacktestReport = aiBacktestReport,
+                    isAiGenerating = isAiGenerating,
+                    onGenerateAiFormula = onGenerateAiFormula,
+                    onRunAutomatedAiBacktest = onRunAutomatedAiBacktest,
+                    onApplyAiFormula = onApplyAiFormula,
                     onApplyFormula = { formula ->
-                        onApplyFormula(formula)
-                        workingFormula = formula
-                        Toast.makeText(context, "${formula.name} applied across the app for $currentLabMarket!", Toast.LENGTH_SHORT).show()
+                        formulaToActivate = formula
                     },
                     onViewRecordReport = { summary ->
                         activeAuditSummary = summary
                         showFullAuditRecordDialog = true
                     },
+                    onExportPdf = { summary ->
+                        val result = onExportPdf(summary)
+                        lastExportedPdfResult = result
+                        showPdfSuccessDialog = true
+                    },
+                    onRunBacktest = onRunBacktest,
                     onRefreshAnalysis = {
                         runAutoMarketOptimization(currentLabMarket)
+                    },
+                    onRunFormulaDiscovery = {
+                        runAiFormulaDiscovery(currentLabMarket)
+                    },
+                    onOpenPanelChartBrowser = {
+                        showPanelChartBrowserDialog = true
+                    },
+                    onOpenPatternScanner = {
+                        showPatternScannerDialog = true
+                    },
+                    onSaveDiscoveredFormula = { config ->
+                        onSaveCustomFormula(config, false)
+                        Toast.makeText(context, "Saved formula '${config.name}' to library!", Toast.LENGTH_SHORT).show()
                     }
                 )
             } else {
@@ -533,10 +617,7 @@ fun A23LabScreen(
                         includeCutDigits = selected.includeCutDigits
                     },
                     onApplyToApp = {
-                        val finalConfig = currentWorkingConfig
-                        onApplyFormula(finalConfig)
-                        workingFormula = finalConfig
-                        Toast.makeText(context, "Formula applied across the entire app!", Toast.LENGTH_SHORT).show()
+                        formulaToActivate = currentWorkingConfig
                     },
                     onOpenSaveDialog = {
                         newFormulaCustomName = formulaNameInput
@@ -730,6 +811,46 @@ fun A23LabScreen(
                 containerColor = Color(0xFF0F172A)
             )
         }
+
+        // -------------------------------------------------------------
+        // 2-STEP FORMULA ACTIVATION CONFIRMATION MODAL
+        // -------------------------------------------------------------
+        if (formulaToActivate != null) {
+            TwoStepFormulaActivationDialog(
+                targetFormula = formulaToActivate!!,
+                currentMarket = currentLabMarket,
+                onDismiss = { formulaToActivate = null },
+                onConfirmActivation = { confirmedFormula ->
+                    onApplyFormula(confirmedFormula)
+                    workingFormula = confirmedFormula
+                    formulaToActivate = null
+                    Toast.makeText(context, "Formula '${confirmedFormula.name}' Activated across App!", Toast.LENGTH_LONG).show()
+                }
+            )
+        }
+
+        // -------------------------------------------------------------
+        // OFFICIAL 100-000 PANEL CHART PANA BROWSER DIALOG
+        // -------------------------------------------------------------
+        if (showPanelChartBrowserDialog) {
+            PanelChartBrowserDialog(
+                onDismiss = { showPanelChartBrowserDialog = false }
+            )
+        }
+
+        // -------------------------------------------------------------
+        // JODI & PANEL PATTERN SCANNER DIALOG
+        // -------------------------------------------------------------
+        if (showPatternScannerDialog) {
+            PatternScannerDialog(
+                marketName = currentLabMarket,
+                onApplyFormula = { formula ->
+                    showPatternScannerDialog = false
+                    formulaToActivate = formula
+                },
+                onDismiss = { showPatternScannerDialog = false }
+            )
+        }
     }
 }
 
@@ -741,22 +862,531 @@ fun AutomaticToolTab(
     currentMarket: String,
     rankedFormulas: List<FormulaMarketRanking>,
     activeFormula: FormulaConfig,
+    discoveredFormulas: List<DiscoveredFormulaCandidate> = emptyList(),
+    isDiscoveringFormulas: Boolean = false,
+    latestOpenPana: String = "159",
+    latestJodi: String = "56",
+    latestDrawLabel: String = "Today's Draw",
+    aiSettings: AiEngineSettings = AiEngineSettings(),
+    onUpdateAiSettings: (AiEngineSettings) -> Unit = {},
+    aiGeneratedFormula: AiGeneratedFormula? = null,
+    aiBacktestReport: AiBacktestReport? = null,
+    isAiGenerating: Boolean = false,
+    onGenerateAiFormula: (marketName: String, prompt: String) -> Unit = { _, _ -> },
+    onRunAutomatedAiBacktest: (marketName: String) -> Unit = {},
+    onApplyAiFormula: (AiGeneratedFormula) -> Unit = {},
     onApplyFormula: (FormulaConfig) -> Unit,
     onViewRecordReport: (BacktestSummary) -> Unit,
-    onRefreshAnalysis: () -> Unit
+    onExportPdf: (BacktestSummary) -> Unit = {},
+    onRunBacktest: (String, FormulaConfig, Int?) -> BacktestSummary = { market, formula, _ ->
+        BacktestSummary(
+            marketName = market,
+            formulaName = formula.name,
+            formulaExpression = formula.mode.formulaDescription,
+            totalTestedDays = 20,
+            passedDays = 15,
+            failedDays = 5,
+            holidayDays = 0,
+            accuracyPercentage = 75.0f,
+            currentStreak = 4,
+            maxStreak = 6
+        )
+    },
+    onRefreshAnalysis: () -> Unit,
+    onRunFormulaDiscovery: () -> Unit = {},
+    onOpenPanelChartBrowser: () -> Unit = {},
+    onOpenPatternScanner: () -> Unit = {},
+    onSaveDiscoveredFormula: (FormulaConfig) -> Unit = {}
 ) {
     val bestRanking = rankedFormulas.firstOrNull()
+
+    // Calculate Active Formula's Backtesting Summary & Live Day Prediction
+    val activeBacktestSummary = remember(currentMarket, activeFormula, rankedFormulas) {
+        rankedFormulas.firstOrNull { it.formula.id == activeFormula.id }?.summary
+            ?: onRunBacktest(currentMarket, activeFormula, null)
+    }
+
+    val activePrediction = remember(latestOpenPana, latestJodi, activeFormula) {
+        val open = latestOpenPana.toIntOrNull() ?: 159
+        val jodi = latestJodi.toIntOrNull() ?: 56
+        FormulaCalculator.calculateWithConfig(open, jodi, activeFormula)
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 14.dp, top = 12.dp, end = 14.dp, bottom = 90.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // Hero Card: Automatic Market Analysis Status
+        // AI Super Engine Control Deck (Google Gemini, OpenAI, Zen Cloud & Automated Backtest Matrix)
+        item {
+            AiEngineControlDeck(
+                marketName = currentMarket,
+                aiSettings = aiSettings,
+                onUpdateAiSettings = onUpdateAiSettings,
+                aiGeneratedFormula = aiGeneratedFormula,
+                aiBacktestReport = aiBacktestReport,
+                isAiGenerating = isAiGenerating,
+                onGenerateAiFormula = onGenerateAiFormula,
+                onRunAutomatedAiBacktest = onRunAutomatedAiBacktest,
+                onApplyAiFormula = onApplyAiFormula
+            )
+        }
+
+        // Quick Action Bar: Deep AI Formula Scanner & Panel Chart 100-000 & Pattern Scanner
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Banner: Weekly Jodi & Pana Pattern Scanner (Single line OPEN button fix)
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0x3B1E1B4B),
+                    border = BorderStroke(1.2.dp, NeonPurple.copy(alpha = 0.8f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onOpenPatternScanner() }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(NeonPurple.copy(alpha = 0.25f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AutoAwesome,
+                                    contentDescription = "Pattern Scanner",
+                                    tint = NeonPurpleBright,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "🔍 Jodi & Panel Pattern Scanner",
+                                    color = Color.White,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Black
+                                )
+                                Text(
+                                    text = "Target: Har Week 1 Jodi + 2 Panne Pass Secret Rules",
+                                    color = NeonPurpleBright,
+                                    fontSize = 10.5.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = NeonPurple
+                        ) {
+                            Text(
+                                text = "OPEN",
+                                color = Color.White,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Black,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    // AI Deep Formula Discovery
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0x38091122),
+                        border = BorderStroke(1.dp, NeonCyan.copy(alpha = 0.5f)),
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { onRunFormulaDiscovery() }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(NeonCyan.copy(alpha = 0.2f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Psychology,
+                                    contentDescription = "AI Scanner",
+                                    tint = NeonCyanBright,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = "Deep AI Discovery",
+                                    color = Color.White,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "Run AI Scanner",
+                                    color = NeonCyanBright,
+                                    fontSize = 10.sp
+                                )
+                            }
+                        }
+                    }
+
+                    // Official Panel Chart Browser (100 - 000)
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0x38091122),
+                        border = BorderStroke(1.dp, NeonGold.copy(alpha = 0.5f)),
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { onOpenPanelChartBrowser() }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(NeonGold.copy(alpha = 0.2f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.GridView,
+                                    contentDescription = "Panel Chart",
+                                    tint = NeonGoldBright,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = "Panel Chart 100-000",
+                                    color = Color.White,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "Official Pana List",
+                                    color = NeonGoldBright,
+                                    fontSize = 10.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // =====================================================================
+        // 🔥 ACTIVE FORMULA LIVE HUB (ACTIVE BADGE + BACKTEST REPORT + LIVE 4-4-4 PREDICTIONS)
+        // =====================================================================
         item {
             GlassCard(
                 modifier = Modifier.fillMaxWidth(),
-                backgroundColor = Color(0xEE091122),
+                backgroundColor = Color(0x44061F17),
+                borderColor = NeonGreen,
+                cornerRadius = 18.dp
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    // Header: Active Status Badge & Market Tag
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(NeonGreen)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "ACTIVE FORMULA IN APP",
+                                color = NeonGreen,
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.Black
+                            )
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = Color(0x3310B981),
+                            border = BorderStroke(0.8.dp, NeonGreen)
+                        ) {
+                            Text(
+                                text = "● RUNNING ON $currentMarket",
+                                color = NeonGreen,
+                                fontSize = 9.5.sp,
+                                fontWeight = FontWeight.Black,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = activeFormula.name,
+                        color = Color.White,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        text = "Algorithm: ${activeFormula.mode.displayName} | Divisor: ÷${activeFormula.divisor} | Offset: ${if (activeFormula.additionOffset >= 0) "+${activeFormula.additionOffset}" else activeFormula.additionOffset.toString()}",
+                        color = Color(0xFF94A3B8),
+                        fontSize = 11.5.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // ⚡ LIVE DAY PREDICTIONS BOX (4 OTC • 4 JODI • 4 PANNE)
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0x60000000),
+                        border = BorderStroke(1.dp, NeonGold.copy(alpha = 0.6f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.AutoAwesome,
+                                        contentDescription = null,
+                                        tint = NeonGoldBright,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "LIVE DAY PREDICTION (4-4-4)",
+                                        color = NeonGoldBright,
+                                        fontSize = 11.5.sp,
+                                        fontWeight = FontWeight.Black
+                                    )
+                                }
+
+                                Text(
+                                    text = "Based on $latestDrawLabel",
+                                    color = Color.Gray,
+                                    fontSize = 9.sp
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            // 4 OTC Row
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text("4 OTC ANK", color = NeonGoldBright, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    Text("(Open/Close)", color = Color.Gray, fontSize = 8.sp)
+                                }
+
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    activePrediction.otcDigits.take(4).forEach { digit ->
+                                        Box(
+                                            modifier = Modifier
+                                                .size(32.dp)
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(Color(0xFF1E293B))
+                                                .border(1.2.dp, NeonGoldBright, RoundedCornerShape(8.dp)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = "$digit",
+                                                color = NeonGoldBright,
+                                                fontSize = 16.sp,
+                                                fontWeight = FontWeight.Black
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+                            HorizontalDivider(color = Color(0x22FFFFFF), thickness = 0.8.dp)
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // 4 VIP Jodis Row
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text("4 VIP JODI", color = NeonCyanBright, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    Text("(Super Brackets)", color = Color.Gray, fontSize = 8.sp)
+                                }
+
+                                Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                                    val jodis = (if (activePrediction.vipMasterJodis.isNotEmpty()) activePrediction.vipMasterJodis else activePrediction.superJodis).take(4)
+                                    jodis.forEach { jodi ->
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = Color(0x3300E5FF),
+                                            border = BorderStroke(1.dp, NeonCyanBright)
+                                        ) {
+                                            Text(
+                                                text = jodi,
+                                                color = Color.White,
+                                                fontSize = 13.5.sp,
+                                                fontWeight = FontWeight.Black,
+                                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+                            HorizontalDivider(color = Color(0x22FFFFFF), thickness = 0.8.dp)
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // 4 Panne Row
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text("4 PANELS", color = NeonPurpleBright, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    Text("(Key Panne)", color = Color.Gray, fontSize = 8.sp)
+                                }
+
+                                Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                                    activePrediction.pannes.take(4).forEach { pana ->
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = Color(0x338B5CF6),
+                                            border = BorderStroke(1.dp, NeonPurpleBright)
+                                        ) {
+                                            Text(
+                                                text = pana,
+                                                color = Color.White,
+                                                fontSize = 11.5.sp,
+                                                fontWeight = FontWeight.Black,
+                                                fontFamily = FontFamily.Monospace,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // 📊 BACKTESTING ACCURACY & STATS SUMMARY
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0x22052E16),
+                        border = BorderStroke(0.8.dp, NeonGreen.copy(alpha = 0.5f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceAround,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("BACKTEST PASS", color = Color.Gray, fontSize = 8.5.sp, fontWeight = FontWeight.Bold)
+                                Text(
+                                    text = String.format(Locale.ENGLISH, "%.1f%%", activeBacktestSummary.accuracyPercentage),
+                                    color = NeonGreen,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Black
+                                )
+                            }
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("TESTED DAYS", color = Color.Gray, fontSize = 8.5.sp, fontWeight = FontWeight.Bold)
+                                Text(
+                                    text = "${activeBacktestSummary.passedDays}/${activeBacktestSummary.totalTestedDays} D",
+                                    color = Color.White,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("MAX STREAK", color = Color.Gray, fontSize = 8.5.sp, fontWeight = FontWeight.Bold)
+                                Text(
+                                    text = "${activeBacktestSummary.maxStreak} Days",
+                                    color = NeonGoldBright,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Action Buttons: View Full Report & Export PDF
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = { onViewRecordReport(activeBacktestSummary) },
+                            modifier = Modifier.weight(1.2f).height(38.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = NeonGreen, contentColor = Color.Black)
+                        ) {
+                            Icon(imageVector = Icons.Default.Visibility, contentDescription = null, modifier = Modifier.size(15.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("View Backtest Audit", fontSize = 11.5.sp, fontWeight = FontWeight.Black)
+                        }
+
+                        OutlinedButton(
+                            onClick = { onExportPdf(activeBacktestSummary) },
+                            modifier = Modifier.weight(0.9f).height(38.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonCyanBright),
+                            border = BorderStroke(1.dp, NeonCyan)
+                        ) {
+                            Icon(imageVector = Icons.Default.Download, contentDescription = null, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("PDF Report", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+
+        // Hero Card: Automatic Market Analysis Status (#1 Best Formula Recommendation)
+        item {
+            GlassCard(
+                modifier = Modifier.fillMaxWidth(),
+                backgroundColor = Color(0x38091122),
                 borderColor = NeonGreen.copy(alpha = 0.6f),
                 cornerRadius = 18.dp
             ) {
@@ -805,11 +1435,13 @@ fun AutomaticToolTab(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     if (bestRanking != null) {
+                        val isBestActive = bestRanking.formula.id == activeFormula.id
+
                         // #1 BEST FORMULA HIGHLIGHT
                         Surface(
                             shape = RoundedCornerShape(14.dp),
-                            color = Color(0x33052E16),
-                            border = BorderStroke(1.2.dp, NeonGreen),
+                            color = Color(0x2B052E16),
+                            border = BorderStroke(1.2.dp, if (isBestActive) NeonGreen else Color(0x6610B981)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.padding(14.dp)) {
@@ -818,23 +1450,42 @@ fun AutomaticToolTab(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Surface(
-                                        shape = RoundedCornerShape(6.dp),
-                                        color = NeonGreen
-                                    ) {
-                                        Text(
-                                            text = "🏆 #1 BEST FORMULA FOR $currentMarket",
-                                            color = Color.Black,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Black,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                        )
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = NeonGreen
+                                        ) {
+                                            Text(
+                                                text = "🏆 #1 BEST FOR $currentMarket",
+                                                color = Color.Black,
+                                                fontSize = 10.5.sp,
+                                                fontWeight = FontWeight.Black,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                            )
+                                        }
+
+                                        if (isBestActive) {
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Surface(
+                                                shape = RoundedCornerShape(4.dp),
+                                                color = Color(0x3310B981),
+                                                border = BorderStroke(0.8.dp, NeonGreen)
+                                            ) {
+                                                Text(
+                                                    text = "● ACTIVE",
+                                                    color = NeonGreen,
+                                                    fontSize = 9.sp,
+                                                    fontWeight = FontWeight.Black,
+                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                                )
+                                            }
+                                        }
                                     }
 
                                     Text(
                                         text = String.format(Locale.ENGLISH, "%.1f%% PASS", bestRanking.summary.accuracyPercentage),
                                         color = NeonGreen,
-                                        fontSize = 18.sp,
+                                        fontSize = 17.sp,
                                         fontWeight = FontWeight.Black
                                     )
                                 }
@@ -844,14 +1495,14 @@ fun AutomaticToolTab(
                                 Text(
                                     text = bestRanking.formula.name,
                                     color = Color.White,
-                                    fontSize = 17.sp,
+                                    fontSize = 16.sp,
                                     fontWeight = FontWeight.Black
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = "Algorithm: ${bestRanking.formula.mode.displayName} | Divisor: ÷${bestRanking.formula.divisor} | Max Win Streak: ${bestRanking.summary.maxStreak} Days",
                                     color = Color.LightGray,
-                                    fontSize = 12.sp
+                                    fontSize = 11.5.sp
                                 )
 
                                 Spacer(modifier = Modifier.height(12.dp))
@@ -861,33 +1512,290 @@ fun AutomaticToolTab(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    // 1. Apply Formula Button
+                                    // Apply / Active Button
                                     Button(
                                         onClick = { onApplyFormula(bestRanking.formula) },
                                         modifier = Modifier
                                             .weight(1.3f)
-                                            .height(42.dp),
+                                            .height(40.dp),
                                         shape = RoundedCornerShape(10.dp),
-                                        colors = ButtonDefaults.buttonColors(containerColor = NeonGreen, contentColor = Color.Black)
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = if (isBestActive) NeonGreen else NeonGold,
+                                            contentColor = Color.Black
+                                        )
                                     ) {
-                                        Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Icon(
+                                            imageVector = if (isBestActive) Icons.Default.Check else Icons.Default.CheckCircle,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
                                         Spacer(modifier = Modifier.width(6.dp))
-                                        Text("Apply Formula", fontWeight = FontWeight.Black, fontSize = 12.5.sp)
+                                        Text(
+                                            text = if (isBestActive) "✅ Active Now" else "Activate Formula",
+                                            fontWeight = FontWeight.Black,
+                                            fontSize = 12.sp
+                                        )
                                     }
 
-                                    // 2. View Record Report Button
+                                    // View Record Report Button
                                     OutlinedButton(
                                         onClick = { onViewRecordReport(bestRanking.summary) },
                                         modifier = Modifier
                                             .weight(1f)
-                                            .height(42.dp),
+                                            .height(40.dp),
                                         shape = RoundedCornerShape(10.dp),
                                         colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonCyanBright),
                                         border = BorderStroke(1.dp, NeonCyan)
                                     ) {
-                                        Icon(imageVector = Icons.Default.Visibility, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Icon(imageVector = Icons.Default.Visibility, contentDescription = null, modifier = Modifier.size(15.dp))
                                         Spacer(modifier = Modifier.width(4.dp))
-                                        Text("View Record", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                        Text("View Record", fontWeight = FontWeight.Bold, fontSize = 11.5.sp)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Section: AI Deep Discovered Formulas (Target: Weekly 1 Jodi + 2 Panas)
+        if (isDiscoveringFormulas) {
+            item {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color(0x38091122),
+                    border = BorderStroke(1.dp, NeonCyan.copy(alpha = 0.6f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth().height(4.dp),
+                            color = NeonCyanBright,
+                            trackColor = Color(0x2200E5FF)
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = "AI Engine is discovering high-win formula permutations for $currentMarket...",
+                            color = NeonCyanBright,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+        } else if (discoveredFormulas.isNotEmpty()) {
+            item {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color(0x38091122),
+                    border = BorderStroke(1.dp, NeonCyan.copy(alpha = 0.5f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Explore,
+                                    contentDescription = null,
+                                    tint = NeonCyanBright,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "AI Discovered Formulas",
+                                    color = Color.White,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = Color(0x3300E5FF)
+                            ) {
+                                Text(
+                                    text = "Target: 1 Jodi + 2 Panas / Wk",
+                                    color = NeonCyanBright,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            discoveredFormulas.take(6).forEach { candidate ->
+                                val isCandidateActive = candidate.formula.id == activeFormula.id
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = Color(0x26000000),
+                                    border = BorderStroke(
+                                        if (isCandidateActive) 1.2.dp else 0.8.dp,
+                                        if (isCandidateActive) NeonGreen else Color(0x4464748B)
+                                    ),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Text(
+                                                    text = candidate.formula.name,
+                                                    color = if (isCandidateActive) NeonGreen else Color.White,
+                                                    fontSize = 13.5.sp,
+                                                    fontWeight = FontWeight.Black
+                                                )
+                                                if (isCandidateActive) {
+                                                    Spacer(modifier = Modifier.width(6.dp))
+                                                    Surface(
+                                                        shape = RoundedCornerShape(4.dp),
+                                                        color = NeonGreen
+                                                    ) {
+                                                        Text(
+                                                            text = "ACTIVE",
+                                                            color = Color.Black,
+                                                            fontSize = 8.sp,
+                                                            fontWeight = FontWeight.Black,
+                                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                            Surface(
+                                                shape = RoundedCornerShape(6.dp),
+                                                color = Color(0x2610B981),
+                                                border = BorderStroke(0.8.dp, NeonGreen)
+                                            ) {
+                                                Text(
+                                                    text = String.format(Locale.ENGLISH, "%.1f%% OTC", candidate.summary.accuracyPercentage),
+                                                    color = NeonGreen,
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.Black,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                )
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.height(6.dp))
+
+                                        // Target Metrics Row: Jodi and Pana Weekly Pass Rates
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Surface(
+                                                shape = RoundedCornerShape(6.dp),
+                                                color = Color(0x2E8B5CF6),
+                                                border = BorderStroke(0.6.dp, NeonPurpleBright.copy(alpha = 0.6f)),
+                                                modifier = Modifier.weight(1f)
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Text(
+                                                        text = "🎯 Wk Jodi: ",
+                                                        color = Color.LightGray,
+                                                        fontSize = 10.sp
+                                                    )
+                                                    Text(
+                                                        text = "${String.format(Locale.ENGLISH, "%.0f%%", candidate.weeklyJodiPassRate)} (${candidate.weeklyJodiHitCount}/${candidate.totalWeeksTested} Wks)",
+                                                        color = NeonPurpleBright,
+                                                        fontSize = 10.5.sp,
+                                                        fontWeight = FontWeight.Black
+                                                    )
+                                                }
+                                            }
+
+                                            Surface(
+                                                shape = RoundedCornerShape(6.dp),
+                                                color = Color(0x2E00E5FF),
+                                                border = BorderStroke(0.6.dp, NeonCyanBright.copy(alpha = 0.6f)),
+                                                modifier = Modifier.weight(1f)
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Text(
+                                                        text = "💎 Wk Pana: ",
+                                                        color = Color.LightGray,
+                                                        fontSize = 10.sp
+                                                    )
+                                                    Text(
+                                                        text = "${String.format(Locale.ENGLISH, "%.0f%%", candidate.weeklyPanaPassRate)} (${candidate.weeklyPanaHitCount}/${candidate.totalWeeksTested} Wks)",
+                                                        color = NeonCyanBright,
+                                                        fontSize = 10.5.sp,
+                                                        fontWeight = FontWeight.Black
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.height(6.dp))
+
+                                        // Hindi Pattern Insight Box
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = Color(0x1F334155),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text(
+                                                text = candidate.patternHindiExplanation,
+                                                color = Color(0xFFE2E8F0),
+                                                fontSize = 10.5.sp,
+                                                lineHeight = 14.sp,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.height(8.dp))
+
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Button(
+                                                onClick = { onApplyFormula(candidate.formula) },
+                                                modifier = Modifier.weight(1.2f).height(36.dp),
+                                                shape = RoundedCornerShape(8.dp),
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = if (isCandidateActive) NeonGreen else NeonGold,
+                                                    contentColor = Color.Black
+                                                )
+                                            ) {
+                                                Text(
+                                                    text = if (isCandidateActive) "✅ Active Now" else "Activate Formula",
+                                                    fontSize = 11.5.sp,
+                                                    fontWeight = FontWeight.Black
+                                                )
+                                            }
+
+                                            OutlinedButton(
+                                                onClick = { onSaveDiscoveredFormula(candidate.formula) },
+                                                modifier = Modifier.weight(0.8f).height(36.dp),
+                                                shape = RoundedCornerShape(8.dp),
+                                                colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonCyanBright),
+                                                border = BorderStroke(1.dp, NeonCyan)
+                                            ) {
+                                                Icon(imageVector = Icons.Default.Save, contentDescription = null, modifier = Modifier.size(13.dp))
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text("Save", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -923,7 +1831,7 @@ fun AutomaticToolTab(
             val isCurrentActive = item.formula.id == activeFormula.id
             Surface(
                 shape = RoundedCornerShape(14.dp),
-                color = Color(0xCC0E172A),
+                color = Color(0x38091122),
                 border = BorderStroke(
                     1.dp,
                     if (isCurrentActive) NeonGreen else Color(0x33475569)
@@ -985,9 +1893,16 @@ fun AutomaticToolTab(
                             onClick = { onApplyFormula(item.formula) },
                             modifier = Modifier.weight(1f).height(36.dp),
                             shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = NeonGold, contentColor = Color.Black)
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isCurrentActive) NeonGreen else NeonGold,
+                                contentColor = Color.Black
+                            )
                         ) {
-                            Text("Apply Formula", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                text = if (isCurrentActive) "✅ Active Now" else "Activate Formula",
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
 
                         OutlinedButton(
@@ -1965,3 +2880,651 @@ fun CompactNumberParamBox(
         }
     }
 }
+
+// -----------------------------------------------------------------------------
+// TWO-STEP FORMULA ACTIVATION CONFIRMATION DIALOG (DO-STEP ACTIVATION)
+// -----------------------------------------------------------------------------
+@Composable
+fun TwoStepFormulaActivationDialog(
+    targetFormula: FormulaConfig,
+    currentMarket: String,
+    onDismiss: () -> Unit,
+    onConfirmActivation: (FormulaConfig) -> Unit
+) {
+    var currentStep by remember { mutableIntStateOf(1) }
+    var understandRiskChecked by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(if (currentStep == 1) NeonCyan.copy(alpha = 0.2f) else NeonGreen.copy(alpha = 0.2f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (currentStep == 1) Icons.Default.Science else Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = if (currentStep == 1) NeonCyanBright else NeonGreen,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Column {
+                    Text(
+                        text = if (currentStep == 1) "Formula Activation (Step 1/2)" else "Final Confirmation (Step 2/2)",
+                        color = Color.White,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        text = if (currentStep == 1) "Pehli Jaanch: Parameters Review" else "Doosri Pushti: Double Check & Lock",
+                        color = if (currentStep == 1) NeonCyanBright else NeonGreen,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        },
+        text = {
+            if (currentStep == 1) {
+                // STEP 1: FORMULA DETAILS & PREVIEW
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = "Kya aap is formula ko active karna chahte hain? Kripya formula ke parameters check karein:",
+                        color = Color.LightGray,
+                        fontSize = 12.5.sp
+                    )
+
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0x330F172A),
+                        border = BorderStroke(1.dp, NeonCyan.copy(alpha = 0.5f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = targetFormula.name,
+                                color = NeonGoldBright,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "• Algorithm Mode: ${targetFormula.mode.displayName}",
+                                color = Color.White,
+                                fontSize = 12.sp
+                            )
+                            Text(
+                                text = "• Divisor (Bhagak): ÷${targetFormula.divisor}",
+                                color = Color.White,
+                                fontSize = 12.sp
+                            )
+                            Text(
+                                text = "• Multiplier Factor (Guna): ×${targetFormula.multiplierFactor}",
+                                color = Color.White,
+                                fontSize = 12.sp
+                            )
+                            Text(
+                                text = "• Addition Offset: ${if (targetFormula.additionOffset >= 0) "+${targetFormula.additionOffset}" else targetFormula.additionOffset.toString()}",
+                                color = Color.White,
+                                fontSize = 12.sp
+                            )
+                            Text(
+                                text = "• Target Output: ${targetFormula.targetOtcCount} OTC Anks (Cut: ${if (targetFormula.includeCutDigits) "YES" else "NO"})",
+                                color = Color.White,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0x2210B981),
+                        border = BorderStroke(0.8.dp, NeonGreen),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "🎯 Target: Market ($currentMarket) me har hafte 1 Jodi aur 2 Panne pass nikalne ka engine set hoga.",
+                            color = NeonGreen,
+                            fontSize = 11.sp,
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    }
+                }
+            } else {
+                // STEP 2: VERIFICATION & DOUBLE-CHECK CONFIRMATION
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0x3310B981),
+                        border = BorderStroke(1.2.dp, NeonGreen),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = NeonGreen, modifier = Modifier.size(22.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = "Permanent Active Lock System",
+                                    color = NeonGreen,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Black
+                                )
+                                Text(
+                                    text = "Galti se galat formula active na ho isliye yeh doosri pushti hai. Jo formula aap active karenge vahi formula sabhi markets aur tabs me active rahega.",
+                                    color = Color.White,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0x22000000),
+                        border = BorderStroke(0.8.dp, NeonGold.copy(alpha = 0.5f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Text(
+                                text = "Formula to Lock & Activate:",
+                                color = Color.Gray,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = targetFormula.name,
+                                color = NeonGoldBright,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Black
+                            )
+                            Text(
+                                text = "Engine: ${targetFormula.mode.displayName} (÷${targetFormula.divisor})",
+                                color = Color.LightGray,
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { understandRiskChecked = !understandRiskChecked },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        androidx.compose.material3.Checkbox(
+                            checked = understandRiskChecked,
+                            onCheckedChange = { understandRiskChecked = it },
+                            colors = androidx.compose.material3.CheckboxDefaults.colors(
+                                checkedColor = NeonGreen,
+                                checkmarkColor = Color.Black
+                            )
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Haan, main is formula ko confirm active set karna chahta hoon.",
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            if (currentStep == 1) {
+                Button(
+                    onClick = { currentStep = 2 },
+                    colors = ButtonDefaults.buttonColors(containerColor = NeonCyanBright, contentColor = Color.Black),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Aage Badhein (Step 2/2) ➔", fontWeight = FontWeight.Bold, fontSize = 12.5.sp)
+                }
+            } else {
+                Button(
+                    onClick = { onConfirmActivation(targetFormula) },
+                    enabled = understandRiskChecked,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = NeonGreen,
+                        contentColor = Color.Black,
+                        disabledContainerColor = Color.DarkGray,
+                        disabledContentColor = Color.Gray
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(imageVector = Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Haan, Confirm Activate Karo", fontWeight = FontWeight.Black, fontSize = 12.sp)
+                }
+            }
+        },
+        dismissButton = {
+            if (currentStep == 2) {
+                TextButton(onClick = { currentStep = 1 }) {
+                    Text("⬅ Wapas (Step 1)", color = NeonCyanBright)
+                }
+            } else {
+                TextButton(onClick = onDismiss) {
+                    Text("Radd Karein (Cancel)", color = Color.LightGray)
+                }
+            }
+        },
+        containerColor = Color(0xFF0B132B)
+    )
+}
+
+// -----------------------------------------------------------------------------
+// OFFICIAL 100-000 PANEL CHART PANA BROWSER DIALOG
+// -----------------------------------------------------------------------------
+@Composable
+fun PanelChartBrowserDialog(
+    onDismiss: () -> Unit
+) {
+    var selectedAnk by remember { mutableIntStateOf(-1) } // -1 means All
+    var selectedType by remember { mutableStateOf<PanaType?>(null) } // null means All
+    var searchQuery by remember { mutableStateOf("") }
+
+    val filteredPanas = remember(selectedAnk, selectedType, searchQuery) {
+        PanelPanaRepository.ALL_OFFICIAL_PANAS.filter { item ->
+            val matchesAnk = selectedAnk == -1 || item.ank == selectedAnk
+            val matchesType = selectedType == null || item.type == selectedType
+            val matchesSearch = searchQuery.isBlank() || item.pana.contains(searchQuery.trim()) || item.ank.toString() == searchQuery.trim()
+            matchesAnk && matchesType && matchesSearch
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(imageVector = Icons.Default.GridView, contentDescription = null, tint = NeonGoldBright, modifier = Modifier.size(22.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Official 100-000 Panel Chart", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                }
+                IconButton(onClick = onDismiss) {
+                    Icon(imageVector = Icons.Default.Delete, contentDescription = "Close", tint = Color.Gray, modifier = Modifier.size(18.dp))
+                }
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(450.dp)
+            ) {
+                // Search field
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Search Pana (e.g. 128, 770)...", fontSize = 12.sp, color = Color.Gray) },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = NeonGoldBright,
+                        unfocusedBorderColor = Color.DarkGray,
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Digit Filter Chips (0 to 9)
+                Text("Filter by Ank (Total Pana: ${filteredPanas.size}):", color = Color.LightGray, fontSize = 11.sp)
+                Spacer(modifier = Modifier.height(4.dp))
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    item {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = if (selectedAnk == -1) NeonGoldBright else Color(0x331E293B),
+                            border = BorderStroke(0.8.dp, if (selectedAnk == -1) NeonGoldBright else Color.Gray),
+                            modifier = Modifier.clickable { selectedAnk = -1 }
+                        ) {
+                            Text(
+                                text = "All",
+                                color = if (selectedAnk == -1) Color.Black else Color.White,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                    items((0..9).toList()) { ank ->
+                        val isSelected = selectedAnk == ank
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = if (isSelected) NeonGoldBright else Color(0x331E293B),
+                            border = BorderStroke(0.8.dp, if (isSelected) NeonGoldBright else Color.Gray),
+                            modifier = Modifier.clickable { selectedAnk = ank }
+                        ) {
+                            Text(
+                                text = "Ank $ank",
+                                color = if (isSelected) Color.Black else Color.White,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Pana Type Filter Chips (SP, DP, TP)
+                val typeOptions = listOf(
+                    PanaType.SINGLE_PATTI to "SP (120)",
+                    PanaType.DOUBLE_PATTI to "DP (90)",
+                    PanaType.TRIPLE_PATTI to "TP (10)"
+                )
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    item {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = if (selectedType == null) NeonCyanBright else Color(0x331E293B),
+                            border = BorderStroke(0.8.dp, if (selectedType == null) NeonCyanBright else Color.Gray),
+                            modifier = Modifier.clickable { selectedType = null }
+                        ) {
+                            Text(
+                                text = "All Types",
+                                color = if (selectedType == null) Color.Black else Color.White,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+                    items(typeOptions.size) { idx ->
+                        val (type, label) = typeOptions[idx]
+                        val isSelected = selectedType == type
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = if (isSelected) NeonCyanBright else Color(0x331E293B),
+                            border = BorderStroke(0.8.dp, if (isSelected) NeonCyanBright else Color.Gray),
+                            modifier = Modifier.clickable { selectedType = type }
+                        ) {
+                            Text(
+                                text = label,
+                                color = if (isSelected) Color.Black else Color.White,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Panas Grid
+                androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+                    columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(4),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(filteredPanas.size) { index ->
+                        val item = filteredPanas[index]
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = Color(0x33000000),
+                            border = BorderStroke(
+                                0.6.dp,
+                                when (item.type) {
+                                    PanaType.SINGLE_PATTI -> Color(0x4464748B)
+                                    PanaType.DOUBLE_PATTI -> NeonGold.copy(alpha = 0.5f)
+                                    PanaType.TRIPLE_PATTI -> NeonGreen.copy(alpha = 0.6f)
+                                }
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(vertical = 4.dp, horizontal = 2.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = item.pana,
+                                    color = Color.White,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Black,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                                Text(
+                                    text = "=${item.ank} (${item.type.name.take(2)})",
+                                    color = when (item.type) {
+                                        PanaType.SINGLE_PATTI -> Color.Gray
+                                        PanaType.DOUBLE_PATTI -> NeonGoldBright
+                                        PanaType.TRIPLE_PATTI -> NeonGreen
+                                    },
+                                    fontSize = 8.5.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onDismiss,
+                colors = ButtonDefaults.buttonColors(containerColor = NeonGoldBright, contentColor = Color.Black),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text("Close", fontWeight = FontWeight.Bold)
+            }
+        },
+        containerColor = Color(0xFF0F172A)
+    )
+}
+
+// -----------------------------------------------------------------------------
+// JODI & PANEL SECRET PATTERN SCANNER DIALOG
+// -----------------------------------------------------------------------------
+@Composable
+fun PatternScannerDialog(
+    marketName: String,
+    onApplyFormula: (FormulaConfig) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val patterns = remember(marketName) {
+        FormulaDiscoveryEngine.getMarketPatternInsights(marketName)
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = NeonPurpleBright,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(
+                            text = "Jodi & Panel Pattern Rules",
+                            color = Color.White,
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                        Text(
+                            text = "Target: Weekly 1 Jodi + 2 Panne for $marketName",
+                            color = NeonPurpleBright,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+                IconButton(onClick = onDismiss) {
+                    Icon(imageVector = Icons.Default.Close, contentDescription = "Close", tint = Color.Gray)
+                }
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 520.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                // Info Banner
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = Color(0x3B1E1B4B),
+                    border = BorderStroke(1.dp, NeonPurple.copy(alpha = 0.6f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        Text(
+                            text = "💡 Secret Pattern Scanner Logic:",
+                            color = NeonPurpleBright,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Satta chart me OTC ki tarah Jodi aur Pana ke bhi weekly cycles hote hain. AI Engine ne $marketName ke chart ko analyze karke 3 sabse strong patterns khoje hain jo week me 1 Jodi aur 2 Panne hit karate hain.",
+                            color = Color(0xFFE2E8F0),
+                            fontSize = 11.sp,
+                            lineHeight = 15.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Pattern Cards
+                patterns.forEach { item ->
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0x2B091122),
+                        border = BorderStroke(1.dp, Color(0x4464748B)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = NeonPurple
+                                ) {
+                                    Text(
+                                        text = item.patternType,
+                                        color = Color.White,
+                                        fontSize = 9.5.sp,
+                                        fontWeight = FontWeight.Black,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+
+                                Text(
+                                    text = item.winProbability,
+                                    color = NeonGreen,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Black
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Text(
+                                text = item.patternTitle,
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Black
+                            )
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            // Targets Badges
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = Color(0x2E8B5CF6)
+                                ) {
+                                    Text(
+                                        text = "🎯 ${item.weeklyJodiTarget}",
+                                        color = NeonPurpleBright,
+                                        fontSize = 10.5.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                    )
+                                }
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = Color(0x2E00E5FF)
+                                ) {
+                                    Text(
+                                        text = "💎 ${item.weeklyPanaTarget}",
+                                        color = NeonCyanBright,
+                                        fontSize = 10.5.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Text(
+                                text = item.description,
+                                color = Color.LightGray,
+                                fontSize = 11.sp,
+                                lineHeight = 15.sp
+                            )
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            Button(
+                                onClick = { onApplyFormula(item.recommendedFormula) },
+                                modifier = Modifier.fillMaxWidth().height(38.dp),
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = NeonGreen, contentColor = Color.Black)
+                            ) {
+                                Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(15.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Activate This Pattern Formula", fontSize = 12.sp, fontWeight = FontWeight.Black)
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onDismiss,
+                colors = ButtonDefaults.buttonColors(containerColor = NeonPurple, contentColor = Color.White),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text("Close", fontWeight = FontWeight.Bold)
+            }
+        },
+        containerColor = Color(0xFF0F172A)
+    )
+}
+

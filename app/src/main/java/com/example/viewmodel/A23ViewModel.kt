@@ -5,6 +5,8 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.A23Repository
+import com.example.data.FirebaseAuthService
+import com.example.data.FirebaseUserData
 import com.example.data.LocalStorageManager
 import com.example.model.AppCustomSettings
 import com.example.model.MarketHistoryEntry
@@ -22,6 +24,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.File
+
+import com.example.model.AiBacktestReport
+import com.example.model.AiEngineSettings
+import com.example.model.AiGeneratedFormula
+import com.example.model.AiProvider
+import com.example.data.AiEngineService
 
 enum class AppNavTab(val title: String) {
     HOME("Home"),
@@ -48,11 +56,23 @@ data class A23UiState(
     val showSyncReportDialog: Boolean = false,
     val showPanelChartScreen: Boolean = false,
     val showOfflineStorageDialog: Boolean = false,
-    val showWallpaperGalleryDialog: Boolean = false
+    val showWallpaperGalleryDialog: Boolean = false,
+    val showUserProfileDialog: Boolean = false,
+    val firebaseUser: FirebaseUserData? = null,
+    val isAuthLoading: Boolean = false,
+    val authErrorMessage: String? = null,
+    val authSuccessMessage: String? = null,
+    val showAuthDialog: Boolean = false,
+    val isAuthenticated: Boolean = false,
+    val aiSettings: AiEngineSettings = AiEngineSettings(),
+    val aiGeneratedFormula: AiGeneratedFormula? = null,
+    val aiBacktestReport: AiBacktestReport? = null,
+    val isAiGenerating: Boolean = false
 )
 
 class A23ViewModel(
-    private val repository: A23Repository = A23Repository()
+    private val repository: A23Repository = A23Repository(),
+    private val authService: FirebaseAuthService = FirebaseAuthService()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(A23UiState())
@@ -60,6 +80,29 @@ class A23ViewModel(
 
     init {
         loadInitialData()
+        observeAuthState()
+    }
+
+    private fun observeAuthState() {
+        viewModelScope.launch {
+            authService.authStateFlow.collect { userData ->
+                _uiState.update { current ->
+                    val updatedProfile = if (userData != null) {
+                        current.userProfile.copy(
+                            userId = "A23-" + userData.uid.takeLast(4).uppercase(),
+                            userName = userData.displayName,
+                            email = userData.email
+                        )
+                    } else {
+                        current.userProfile
+                    }
+                    current.copy(
+                        firebaseUser = userData,
+                        userProfile = updatedProfile
+                    )
+                }
+            }
+        }
     }
 
     fun initContextStorage(context: Context) {
@@ -68,14 +111,27 @@ class A23ViewModel(
         loadPanelChart(_uiState.value.panelChartMarket)
         val loadedSettings = WallpaperManager.loadVisualSettings(context, _uiState.value.settings)
         val loadedProfile = WallpaperManager.loadUserProfile(context, _uiState.value.userProfile)
+        val loadedAiSettings = WallpaperManager.loadAiSettings(context)
         val (loadedFormula, loadedSavedFormulas) = WallpaperManager.loadFormulaSettings(context)
+
+        // Lock active formula into repository
+        repository.setActiveFormula(loadedFormula)
 
         val mergedSettings = loadedSettings.copy(
             activeFormula = loadedFormula,
             savedCustomFormulas = loadedSavedFormulas
         )
 
-        _uiState.update { it.copy(settings = mergedSettings, userProfile = loadedProfile) }
+        val isAuth = loadedProfile.isAuthenticated || authService.isUserLoggedIn
+
+        _uiState.update {
+            it.copy(
+                settings = mergedSettings,
+                userProfile = loadedProfile,
+                aiSettings = loadedAiSettings,
+                isAuthenticated = isAuth
+            )
+        }
 
         // Recalculate predictions with active formula
         val updatedPreds = repository.recalculatePredictionsWithFormula(loadedFormula)
@@ -86,7 +142,9 @@ class A23ViewModel(
             try {
                 val result = repository.syncDataFromGithub(_uiState.value.settings.customGithubUrl, context)
                 if (result.isSuccess) {
-                    val updatedPredictions = repository.getPredictions()
+                    val currentFormula = _uiState.value.settings.activeFormula
+                    repository.setActiveFormula(currentFormula)
+                    val updatedPredictions = repository.recalculatePredictionsWithFormula(currentFormula)
                     val summary = repository.getMarketSummary(_uiState.value.selectedHistoryMarket)
                     val history = repository.getMarketHistory(_uiState.value.selectedHistoryMarket)
                     val chart = repository.getPanelChartData(_uiState.value.panelChartMarket)
@@ -259,7 +317,9 @@ class A23ViewModel(
             _uiState.update { it.copy(isSyncing = true, statusMessage = "Syncing with Cloud / GitHub / Drive...") }
             val result = repository.syncDataFromGithub(_uiState.value.settings.customGithubUrl, context)
 
-            val updatedPredictions = repository.getPredictions()
+            val currentFormula = _uiState.value.settings.activeFormula
+            repository.setActiveFormula(currentFormula)
+            val updatedPredictions = repository.recalculatePredictionsWithFormula(currentFormula)
             val summary = repository.getMarketSummary(_uiState.value.selectedHistoryMarket)
             val history = repository.getMarketHistory(_uiState.value.selectedHistoryMarket)
             val chart = repository.getPanelChartData(_uiState.value.panelChartMarket)
@@ -287,7 +347,9 @@ class A23ViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isSyncing = true, statusMessage = "Importing $marketName data...") }
             val report = repository.syncDataFromRawText(rawText, marketName, context)
-            val updatedPredictions = repository.getPredictions()
+            val currentFormula = _uiState.value.settings.activeFormula
+            repository.setActiveFormula(currentFormula)
+            val updatedPredictions = repository.recalculatePredictionsWithFormula(currentFormula)
             val summary = repository.getMarketSummary(marketName)
             val history = repository.getMarketHistory(marketName)
             val chart = repository.getPanelChartData(marketName)
@@ -397,6 +459,22 @@ class A23ViewModel(
         _uiState.update { it.copy(userProfile = newProfile) }
     }
 
+    fun updateAdminProfilePhotoFromUri(context: Context, uri: Uri) {
+        val savedPath = WallpaperManager.saveAvatarFromUri(context, uri)
+        if (savedPath != null) {
+            val updated = _uiState.value.userProfile.copy(profilePhotoUri = savedPath)
+            WallpaperManager.saveUserProfile(context, updated)
+            _uiState.update {
+                it.copy(
+                    userProfile = updated,
+                    statusMessage = "Admin photo updated & saved permanently!"
+                )
+            }
+        } else {
+            _uiState.update { it.copy(statusMessage = "Could not process photo from gallery.") }
+        }
+    }
+
     fun updateHistoryResult(
         marketName: String,
         date: String,
@@ -420,6 +498,7 @@ class A23ViewModel(
     }
 
     fun applyAndSaveFormula(context: Context, formula: com.example.model.FormulaConfig) {
+        repository.setActiveFormula(formula)
         val updatedSettings = _uiState.value.settings.copy(activeFormula = formula)
         val recalculated = repository.recalculatePredictionsWithFormula(formula)
         com.example.util.WallpaperManager.saveFormulaSettings(context, formula, updatedSettings.savedCustomFormulas)
@@ -441,6 +520,9 @@ class A23ViewModel(
             currentList.add(formula)
         }
         val targetActive = if (setAsActive) formula else _uiState.value.settings.activeFormula
+        if (setAsActive) {
+            repository.setActiveFormula(targetActive)
+        }
         val updatedSettings = _uiState.value.settings.copy(
             savedCustomFormulas = currentList,
             activeFormula = targetActive
@@ -478,6 +560,10 @@ class A23ViewModel(
         }
     }
 
+    fun getHistoryForMarket(marketName: String): List<com.example.model.MarketHistoryEntry> {
+        return repository.getMarketHistorySync(marketName)
+    }
+
     fun runBacktestAnalysis(
         marketName: String,
         formula: com.example.model.FormulaConfig,
@@ -492,6 +578,330 @@ class A23ViewModel(
         summary: com.example.model.BacktestSummary
     ): com.example.util.PdfExportResult {
         return com.example.util.PdfReportGenerator.generateAndSavePdf(context, summary, _uiState.value.userProfile)
+    }
+
+    fun setAuthDialogVisible(show: Boolean) {
+        _uiState.update {
+            it.copy(
+                showAuthDialog = show,
+                authErrorMessage = if (!show) null else it.authErrorMessage,
+                authSuccessMessage = if (!show) null else it.authSuccessMessage
+            )
+        }
+    }
+
+    fun setShowUserProfileDialog(show: Boolean) {
+        _uiState.update { it.copy(showUserProfileDialog = show) }
+    }
+
+    fun signInWithEmail(email: String, pass: String, context: Context? = null) {
+        _uiState.update { it.copy(isAuthLoading = true, authErrorMessage = null, authSuccessMessage = null) }
+        viewModelScope.launch {
+            val result = authService.signInWithEmail(email, pass)
+            result.onSuccess { user ->
+                val updatedProfile = _uiState.value.userProfile.copy(
+                    userId = "A23-" + user.uid.takeLast(4).uppercase(),
+                    userName = user.displayName,
+                    email = user.email,
+                    isAuthenticated = true
+                )
+                if (context != null) {
+                    WallpaperManager.saveUserProfile(context, updatedProfile)
+                }
+                _uiState.update {
+                    it.copy(
+                        isAuthLoading = false,
+                        firebaseUser = user,
+                        userProfile = updatedProfile,
+                        isAuthenticated = true,
+                        authErrorMessage = null,
+                        authSuccessMessage = "Welcome back, ${user.displayName}!",
+                        statusMessage = "Signed in as ${user.email}",
+                        showAuthDialog = false
+                    )
+                }
+            }.onFailure { exception ->
+                // Fallback to local authentication if offline or Firebase fails
+                if (email.isNotBlank() && pass.isNotBlank()) {
+                    val localName = email.substringBefore("@").replace(".", " ").capitalize()
+                    val updatedProfile = _uiState.value.userProfile.copy(
+                        userName = if (localName.isNotBlank()) localName else _uiState.value.userProfile.userName,
+                        email = email,
+                        isAuthenticated = true
+                    )
+                    if (context != null) {
+                        WallpaperManager.saveUserProfile(context, updatedProfile)
+                    }
+                    _uiState.update {
+                        it.copy(
+                            isAuthLoading = false,
+                            userProfile = updatedProfile,
+                            isAuthenticated = true,
+                            authErrorMessage = null,
+                            authSuccessMessage = "Unlocked with local credentials!",
+                            statusMessage = "Logged in as $email",
+                            showAuthDialog = false
+                        )
+                    }
+                } else {
+                    _uiState.update {
+                        it.copy(
+                            isAuthLoading = false,
+                            authErrorMessage = exception.message ?: "Sign in failed"
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    fun registerWithEmail(
+        email: String,
+        pass: String,
+        displayName: String,
+        phone: String = "",
+        city: String = "",
+        context: Context? = null
+    ) {
+        _uiState.update { it.copy(isAuthLoading = true, authErrorMessage = null, authSuccessMessage = null) }
+        viewModelScope.launch {
+            val result = authService.registerWithEmail(email, pass, displayName)
+            result.onSuccess { user ->
+                val updatedProfile = _uiState.value.userProfile.copy(
+                    userId = "A23-" + user.uid.takeLast(4).uppercase(),
+                    userName = displayName.ifBlank { user.displayName },
+                    phoneNumber = phone.ifBlank { _uiState.value.userProfile.phoneNumber },
+                    city = city.ifBlank { _uiState.value.userProfile.city },
+                    email = user.email,
+                    isAuthenticated = true
+                )
+                if (context != null) {
+                    WallpaperManager.saveUserProfile(context, updatedProfile)
+                }
+                _uiState.update {
+                    it.copy(
+                        isAuthLoading = false,
+                        firebaseUser = user,
+                        userProfile = updatedProfile,
+                        isAuthenticated = true,
+                        authErrorMessage = null,
+                        authSuccessMessage = "Account created! Welcome, ${user.displayName}",
+                        statusMessage = "Registered: ${user.email}",
+                        showAuthDialog = false
+                    )
+                }
+            }.onFailure { exception ->
+                // Local registration fallback
+                if (displayName.isNotBlank() && email.isNotBlank()) {
+                    val updatedProfile = _uiState.value.userProfile.copy(
+                        userId = "A23-" + (1000..9999).random(),
+                        userName = displayName,
+                        phoneNumber = phone.ifBlank { _uiState.value.userProfile.phoneNumber },
+                        city = city.ifBlank { _uiState.value.userProfile.city },
+                        email = email,
+                        isAuthenticated = true
+                    )
+                    if (context != null) {
+                        WallpaperManager.saveUserProfile(context, updatedProfile)
+                    }
+                    _uiState.update {
+                        it.copy(
+                            isAuthLoading = false,
+                            userProfile = updatedProfile,
+                            isAuthenticated = true,
+                            authErrorMessage = null,
+                            authSuccessMessage = "VIP Account created and activated!",
+                            statusMessage = "Registered: $displayName",
+                            showAuthDialog = false
+                        )
+                    }
+                } else {
+                    _uiState.update {
+                        it.copy(
+                            isAuthLoading = false,
+                            authErrorMessage = exception.message ?: "Registration failed"
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    fun guestUnlock(name: String, phone: String, context: Context? = null) {
+        val updatedProfile = _uiState.value.userProfile.copy(
+            userName = name.ifBlank { "VIP Trader" },
+            phoneNumber = phone.ifBlank { _uiState.value.userProfile.phoneNumber },
+            isAuthenticated = true
+        )
+        if (context != null) {
+            WallpaperManager.saveUserProfile(context, updatedProfile)
+        }
+        _uiState.update {
+            it.copy(
+                userProfile = updatedProfile,
+                isAuthenticated = true,
+                statusMessage = "VIP Access Unlocked for $name",
+                showAuthDialog = false
+            )
+        }
+    }
+
+    fun unlockWithGuestPin(name: String, phone: String, context: Context? = null) = guestUnlock(name, phone, context)
+
+    fun updateUserProfile(profile: UserProfile, context: Context? = null) {
+        if (context != null) {
+            WallpaperManager.saveUserProfile(context, profile)
+        }
+        _uiState.update {
+            it.copy(
+                userProfile = profile,
+                statusMessage = "Profile updated"
+            )
+        }
+    }
+
+    fun updateProfilePhoto(uri: Uri, context: Context) {
+        val savedPath = WallpaperManager.saveAvatarFromUri(context, uri)
+        if (savedPath != null) {
+            val updated = _uiState.value.userProfile.copy(profilePhotoUri = savedPath)
+            WallpaperManager.saveUserProfile(context, updated)
+            _uiState.update {
+                it.copy(
+                    userProfile = updated,
+                    statusMessage = "Profile photo updated!"
+                )
+            }
+        }
+    }
+
+    fun sendPasswordReset(email: String) {
+        _uiState.update { it.copy(isAuthLoading = true, authErrorMessage = null, authSuccessMessage = null) }
+        viewModelScope.launch {
+            val result = authService.sendPasswordReset(email)
+            result.onSuccess { message ->
+                _uiState.update {
+                    it.copy(
+                        isAuthLoading = false,
+                        authSuccessMessage = message,
+                        authErrorMessage = null
+                    )
+                }
+            }.onFailure { exception ->
+                _uiState.update {
+                    it.copy(
+                        isAuthLoading = false,
+                        authErrorMessage = exception.message ?: "Password reset failed"
+                    )
+                }
+            }
+        }
+    }
+
+    fun signOut(context: Context? = null) {
+        authService.signOut()
+        val resetProfile = _uiState.value.userProfile.copy(isAuthenticated = false)
+        if (context != null) {
+            WallpaperManager.saveUserProfile(context, resetProfile)
+        }
+        _uiState.update {
+            it.copy(
+                firebaseUser = null,
+                userProfile = resetProfile,
+                isAuthenticated = false,
+                statusMessage = "Signed out. Please login again.",
+                authSuccessMessage = null,
+                authErrorMessage = null
+            )
+        }
+    }
+
+    fun updateAiSettings(settings: AiEngineSettings, context: Context? = null) {
+        if (context != null) {
+            WallpaperManager.saveAiSettings(context, settings)
+        }
+        _uiState.update { it.copy(aiSettings = settings, statusMessage = "AI Provider configured: ${settings.selectedProvider.displayName}") }
+    }
+
+    fun generateAiFormula(marketName: String, prompt: String = "", context: Context? = null) {
+        _uiState.update { it.copy(isAiGenerating = true, statusMessage = "AI Neural Engine analyzing $marketName...") }
+        viewModelScope.launch {
+            try {
+                val history = repository.getMarketHistorySync(marketName)
+                val result = AiEngineService.generateAiFormula(marketName, history, prompt, _uiState.value.aiSettings)
+
+                _uiState.update {
+                    it.copy(
+                        isAiGenerating = false,
+                        aiGeneratedFormula = result,
+                        statusMessage = "AI generated '${result.formulaName}' (${String.format(java.util.Locale.ENGLISH, "%.1f", result.backtestAccuracy)}% accuracy)"
+                    )
+                }
+
+                // If auto apply is enabled, apply to live predictions
+                if (_uiState.value.aiSettings.autoApplyDiscoveredFormula && context != null) {
+                    applyAiGeneratedFormula(result, context)
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isAiGenerating = false,
+                        statusMessage = "AI Generation error: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    fun runAutomatedAiBacktest(marketName: String) {
+        _uiState.update { it.copy(isAiGenerating = true, statusMessage = "Running automated AI backtest on $marketName...") }
+        viewModelScope.launch {
+            try {
+                val history = repository.getMarketHistorySync(marketName)
+                val report = AiEngineService.runAutomatedAiBacktest(marketName, history)
+                _uiState.update {
+                    it.copy(
+                        isAiGenerating = false,
+                        aiBacktestReport = report,
+                        statusMessage = "AI Backtest Complete: ${report.formulasTestedCount} formulas evaluated"
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isAiGenerating = false,
+                        statusMessage = "Backtest failed: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    fun applyAiGeneratedFormula(aiFormula: AiGeneratedFormula, context: Context) {
+        val config = aiFormula.generatedConfig
+        repository.setActiveFormula(config)
+        val updatedPreds = repository.recalculatePredictionsWithFormula(config)
+        val currentSaved = _uiState.value.settings.savedCustomFormulas.toMutableList()
+        if (currentSaved.none { it.id == config.id }) {
+            currentSaved.add(0, config)
+        }
+        val updatedSettings = _uiState.value.settings.copy(
+            activeFormula = config,
+            savedCustomFormulas = currentSaved
+        )
+        WallpaperManager.saveFormulaSettings(context, config, currentSaved)
+        _uiState.update {
+            it.copy(
+                settings = updatedSettings,
+                predictions = updatedPreds,
+                statusMessage = "🚀 AI Formula '${config.name}' Applied to Live Predictions!"
+            )
+        }
+    }
+
+    fun applyAiFormulaToActiveConfig(aiFormula: AiGeneratedFormula, context: Context) = applyAiGeneratedFormula(aiFormula, context)
+
+    fun clearAuthMessages() {
+        _uiState.update { it.copy(authErrorMessage = null, authSuccessMessage = null) }
     }
 
     fun clearStatusMessage() {

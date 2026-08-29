@@ -355,14 +355,14 @@ fun WallpaperBackground(
                             )
                         }
 
-                        WallpaperStyle.ROYAL_GOLD_HD -> {
-                            // Ultra-luminous 24K Gold & Diamond Rays
+                        WallpaperStyle.ROYAL_GOLD_HD, WallpaperStyle.GOLDEN_VIP -> {
+                            // Ultra-luminous 24K Gold & Matrix Lattice
                             drawRect(
                                 brush = Brush.verticalGradient(
                                     colors = listOf(
                                         Color(0xFF0F0B03),
-                                        Color(0xFF1F1706),
-                                        Color(0xFF0A0702)
+                                        Color(0xFF1E1505),
+                                        Color(0xFF080602)
                                     )
                                 )
                             )
@@ -377,13 +377,85 @@ fun WallpaperBackground(
                             )
                             drawCircle(
                                 brush = Brush.radialGradient(
-                                    colors = listOf(Color(0xFFF59E0B).copy(alpha = 0.25f), Color.Transparent),
+                                    colors = listOf(Color(0xFFF59E0B).copy(alpha = 0.28f), Color.Transparent),
                                     center = Offset(width * 0.8f, height * 0.7f),
                                     radius = width * 0.8f
                                 ),
                                 radius = width * 0.8f,
                                 center = Offset(width * 0.8f, height * 0.7f)
                             )
+                            // Elegant gold grid matrix lines
+                            val goldStep = 48f
+                            var gx = 0f
+                            while (gx <= width) {
+                                drawLine(
+                                    color = Color(0xFFF59E0B).copy(alpha = 0.08f),
+                                    start = Offset(gx, 0f),
+                                    end = Offset(gx, height),
+                                    strokeWidth = 1f
+                                )
+                                gx += goldStep
+                            }
+                            var gy = 0f
+                            while (gy <= height) {
+                                drawLine(
+                                    color = Color(0xFFFBBF24).copy(alpha = 0.06f),
+                                    start = Offset(0f, gy),
+                                    end = Offset(width, gy),
+                                    strokeWidth = 1f
+                                )
+                                gy += goldStep
+                            }
+                        }
+
+                        WallpaperStyle.CYBER_EMERALD_HD, WallpaperStyle.MATRIX_STREAM, WallpaperStyle.EMERALD_DRAGON -> {
+                            // Live Cyber Emerald Market Stream
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color(0xFF021208),
+                                        Color(0xFF052212),
+                                        Color(0xFF010A04)
+                                    )
+                                )
+                            )
+                            drawCircle(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(Color(0xFF22C55E).copy(alpha = 0.34f), Color(0xFF10B981).copy(alpha = 0.15f), Color.Transparent),
+                                    center = Offset(width * 0.5f, height * 0.25f),
+                                    radius = width * 0.85f
+                                ),
+                                radius = width * 0.85f,
+                                center = Offset(width * 0.5f, height * 0.25f)
+                            )
+                            drawCircle(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(Color(0xFF06B6D4).copy(alpha = 0.25f), Color.Transparent),
+                                    center = Offset(width * 0.2f, height * 0.8f),
+                                    radius = width * 0.7f
+                                ),
+                                radius = width * 0.7f,
+                                center = Offset(width * 0.2f, height * 0.8f)
+                            )
+                            // Cyber candlestick stream lines
+                            val streamStep = 36f
+                            var sx = 18f
+                            while (sx <= width) {
+                                drawLine(
+                                    brush = Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color(0x0022C55E),
+                                            Color(0x2822C55E),
+                                            Color(0x504ADE80),
+                                            Color(0x0022C55E)
+                                        )
+                                    ),
+                                    start = Offset(sx, 0f),
+                                    end = Offset(sx, height),
+                                    strokeWidth = 1.5f
+                                )
+                                sx += streamStep
+                            }
                         }
 
                         WallpaperStyle.COSMIC_DEEP_SPACE -> {
