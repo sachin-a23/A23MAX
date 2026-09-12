@@ -1,10 +1,17 @@
 package com.example.data
 
+import com.example.engine.DeterministicBacktestEngine
+import com.example.engine.FormulaResearchEngine
+import com.example.engine.HistoryValidator
+import com.example.engine.WalkForwardValidator
 import com.example.model.BacktestSummary
 import com.example.model.FormulaConfig
 import com.example.model.FormulaEngineMode
+import com.example.model.FormulaHasher
 import com.example.model.MarketHistoryEntry
+import com.example.model.ResearchTarget
 import com.example.util.DateUtils
+import java.util.Locale
 
 data class MarketPatternInsight(
     val patternTitle: String,
@@ -14,6 +21,15 @@ data class MarketPatternInsight(
     val recommendedFormula: FormulaConfig,
     val weeklyJodiTarget: String,
     val weeklyPanaTarget: String
+)
+
+data class HighPassVichar(
+    val titleHindi: String,
+    val conceptTitle: String,
+    val passRateBadge: String,
+    val explanationHindi: String,
+    val formulaIdeaTip: String,
+    val mathRule: String
 )
 
 data class DiscoveredFormulaCandidate(
@@ -88,189 +104,76 @@ object FormulaDiscoveryEngine {
     }
 
     /**
-     * Runs multi-heuristic deep pattern discovery against market history to find formulas
-     * guaranteed to hit at least 1 Jodi + 1-2 Panas every week.
+     * Scans formula permutations across mathematical parameters (Modes, Divisors, Multipliers, Offsets, Cut Digits)
+     * to find optimal formulas on the active market's real history without blocking the UI thread.
      */
-    fun discoverFormulas(
+    fun scanUnlimitedGridFormulas(
         marketName: String,
         historyEntries: List<MarketHistoryEntry>,
-        limitCandidates: Int = 8
+        targetOtcCount: Int = 4,
+        targetJodiCount: Int = 6,
+        targetPanelCount: Int = 6,
+        maxTopResults: Int = 12
     ): List<DiscoveredFormulaCandidate> {
         val effectiveHistory = resolveEffectiveHistory(marketName, historyEntries)
-        val candidates = mutableListOf<Triple<FormulaConfig, String, String>>()
+        if (effectiveHistory.isEmpty()) return emptyList()
 
-        var idCounter = 1
+        val testedConfigs = mutableListOf<FormulaConfig>()
+        var scanIndex = 1
 
-        // Pattern 1: Family Jodi & 8-Bracket Golden Cross (हफ्ते में 1 जोड़ी 100% टारगेट)
-        candidates.add(
-            Triple(
-                FormulaConfig(
-                    id = "ai_family_jodi_${idCounter++}",
-                    name = "AI Family-Jodi Master (D9-M2)",
-                    mode = FormulaEngineMode.JODI_MULTIPLIER,
-                    divisor = 9,
-                    multiplierFactor = 2,
-                    additionOffset = 1,
-                    targetOtcCount = 4,
-                    includeCutDigits = false,
-                    isCustom = true,
-                    customNotes = "Target: 1 Jodi + 2 Panas / Week (Family Cycle & Cross Product)"
-                ),
-                "Family Jodi & Cross Product Sync",
-                "🎯 Family 8-Jodi & Gap Trick: Pichle result ke difference gap se Direct Cross Jodis generate hoti hain jo hafte me kam se kam 1 Jodi pass karati hain."
-            )
+        val divisorsToTest = intArrayOf(5, 7, 8, 9, 11, 13)
+        val multipliersToTest = intArrayOf(1, 2, 3)
+        val offsetsToTest = intArrayOf(0, 1, 2, 3)
+        val modesToTest = arrayOf(
+            FormulaEngineMode.A23_CLASSIC,
+            FormulaEngineMode.JODI_MULTIPLIER,
+            FormulaEngineMode.PANA_SUM_MATRIX,
+            FormulaEngineMode.MODULO_ENGINE
         )
 
-        // Pattern 2: Open Pana Sum Touch & SP/DP Panel Matrix (1-2 पाना पास गारंटी)
-        candidates.add(
-            Triple(
-                FormulaConfig(
-                    id = "ai_pana_touch_${idCounter++}",
-                    name = "AI Pana-Touch Super Matrix (D7)",
-                    mode = FormulaEngineMode.PANA_SUM_MATRIX,
-                    divisor = 7,
-                    multiplierFactor = 3,
-                    additionOffset = 1,
-                    targetOtcCount = 4,
-                    includeCutDigits = true,
-                    isCustom = true,
-                    customNotes = "Target: 2 Panne / Week (Pana Digit Sum & Cut Matrix)"
-                ),
-                "Open Pana Sum & Cut Panel Filter",
-                "💎 Pana Sum Matrix: Open Pana ke 3 anko ka total aur Cut touch har hafte 2 direct Single/Double Panne pass karata hai."
-            )
-        )
+        for (mode in modesToTest) {
+            for (divisor in divisorsToTest) {
+                for (multiplier in multipliersToTest) {
+                    for (offset in offsetsToTest) {
+                        for (includeCut in booleanArrayOf(false, true)) {
+                            val modeLabel = when (mode) {
+                                FormulaEngineMode.A23_CLASSIC -> "Classic Gold"
+                                FormulaEngineMode.JODI_MULTIPLIER -> "Jodi Multiplier"
+                                FormulaEngineMode.PANA_SUM_MATRIX -> "Pana Sum Matrix"
+                                FormulaEngineMode.MODULO_ENGINE -> "Modulo Cycle"
+                                FormulaEngineMode.CUSTOM_EXPRESSION -> "Custom Delta"
+                                FormulaEngineMode.D7_M2_SERIES -> "D7 M2 Master Series"
+                            }
+                            testedConfigs.add(
+                                FormulaConfig(
+                                    id = "scan_${scanIndex++}",
+                                    name = "$modeLabel (D$divisor-M$multiplier+O$offset)",
+                                    mode = mode,
+                                    divisor = divisor,
+                                    multiplierFactor = multiplier,
+                                    additionOffset = offset,
+                                    targetOtcCount = targetOtcCount,
+                                    targetJodiCount = targetJodiCount,
+                                    targetPanelCount = targetPanelCount,
+                                    includeCutDigits = includeCut,
+                                    isCustom = true,
+                                    isLocked = false,
+                                    customNotes = "Deterministic History Matrix Candidate"
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+        }
 
-        // Pattern 3: Classic Multi-Factor High-Pass Derivation
-        candidates.add(
-            Triple(
-                FormulaConfig(
-                    id = "ai_classic_gold_${idCounter++}",
-                    name = "AI Classic Golden Multiplier (D9)",
-                    mode = FormulaEngineMode.A23_CLASSIC,
-                    divisor = 9,
-                    multiplierFactor = 1,
-                    additionOffset = 0,
-                    targetOtcCount = 4,
-                    includeCutDigits = false,
-                    isCustom = true,
-                    customNotes = "High Accuracy Classic Derivation"
-                ),
-                "Classic Multi-Factor Derivation",
-                "⚡ Master Multiplier: 4 OTC Digits + 4 VIP Master Jodis calculation har market draw me reliable results deta hai."
-            )
-        )
-
-        // Pattern 4: Modulo Harmonic Wave & Line Chart Column Sync
-        candidates.add(
-            Triple(
-                FormulaConfig(
-                    id = "ai_modulo_wave_${idCounter++}",
-                    name = "AI Modulo Wave Sync (D8-O3)",
-                    mode = FormulaEngineMode.MODULO_ENGINE,
-                    divisor = 8,
-                    multiplierFactor = 3,
-                    additionOffset = 3,
-                    targetOtcCount = 4,
-                    includeCutDigits = false,
-                    isCustom = true,
-                    customNotes = "Modulo Cycle Pattern"
-                ),
-                "Harmonic Modulo Cycle Filter",
-                "🌊 Modulo Cycle Pattern: Monday se Saturday tak 6-din ke line chart pattern ko sync karke continuous win streaks banata hai."
-            )
-        )
-
-        // Pattern 5: Direct Jodi Cross Amplification (D5+O2)
-        candidates.add(
-            Triple(
-                FormulaConfig(
-                    id = "ai_jodi_cross_${idCounter++}",
-                    name = "AI Direct Cross Jodi-X (D5)",
-                    mode = FormulaEngineMode.JODI_MULTIPLIER,
-                    divisor = 5,
-                    multiplierFactor = 2,
-                    additionOffset = 2,
-                    targetOtcCount = 4,
-                    includeCutDigits = false,
-                    isCustom = true,
-                    customNotes = "Fast Direct Cross Product"
-                ),
-                "Direct Cross Jodi Amplification",
-                "🔥 Direct 16-Cross Matrix: 4 Ank cross karke pure hafte me strong Jodi combination lock karta hai."
-            )
-        )
-
-        // Pattern 6: Modulo Golden Matrix (D11-M4)
-        candidates.add(
-            Triple(
-                FormulaConfig(
-                    id = "ai_modulo_11_${idCounter++}",
-                    name = "AI Modulo Golden (D11-M4)",
-                    mode = FormulaEngineMode.MODULO_ENGINE,
-                    divisor = 11,
-                    multiplierFactor = 4,
-                    additionOffset = 7,
-                    targetOtcCount = 4,
-                    includeCutDigits = false,
-                    isCustom = true,
-                    customNotes = "Modulo Prime Division Cycle"
-                ),
-                "Modulo Prime Division Cycle",
-                "✨ Prime Modulo: Division 11 se deep cycle pattern extract hota hai jo difficult days me bhi pass deta hai."
-            )
-        )
-
-        // Heuristic 7: Pana Sum Matrix (D5)
-        candidates.add(
-            Triple(
-                FormulaConfig(
-                    id = "ai_sum_d5_${idCounter++}",
-                    name = "AI PanaSum Matrix (D5-M3)",
-                    mode = FormulaEngineMode.PANA_SUM_MATRIX,
-                    divisor = 5,
-                    multiplierFactor = 3,
-                    additionOffset = 1,
-                    targetOtcCount = 4,
-                    includeCutDigits = true,
-                    isCustom = true,
-                    customNotes = "Pana Digit Sum + Cut Balance"
-                ),
-                "Pana Digit Sum + Cut Balance",
-                "🎯 Panel Cut Matrix: SP Pana sequence pairing se high probability panna list milti hai."
-            )
-        )
-
-        // Heuristic 8: Classic D7 High-Speed
-        candidates.add(
-            Triple(
-                FormulaConfig(
-                    id = "ai_classic_d7_${idCounter++}",
-                    name = "AI Classic Pro (D7-M2)",
-                    mode = FormulaEngineMode.A23_CLASSIC,
-                    divisor = 7,
-                    multiplierFactor = 2,
-                    additionOffset = 0,
-                    targetOtcCount = 4,
-                    includeCutDigits = false,
-                    isCustom = true,
-                    customNotes = "Fast 7-Divisor Rotation"
-                ),
-                "Fast 7-Divisor Rotation",
-                "⚡ Quick 7-Cycle: Short-term weekly trends ke liye sabse fast adapting formula."
-            )
-        )
-
-        // Evaluate all candidates against the effective history
-        val evaluated = candidates.map { (config, strategy, hindiExplanation) ->
+        val evaluated = testedConfigs.map { config ->
             val summary = FormulaCalculator.runBacktest(marketName, effectiveHistory, config)
 
-            // Group non-holiday results into weeks (6 working days = 1 week)
             val validDays = summary.results.filter { !it.isHoliday }
             val weekChunks = validDays.chunked(6)
             val totalWeeks = weekChunks.size.coerceAtLeast(1)
 
-            // 1. Weekly Jodi Pass Count (at least 1 day in the week had both Jodi anks in predicted OTC / VIP Jodis)
             val weeklyJodiHitCount = weekChunks.count { week ->
                 week.any { day ->
                     day.predictedOtc.size >= 2 && day.actualJodiAnks.size >= 2 &&
@@ -282,7 +185,169 @@ object FormulaDiscoveryEngine {
                 ((weeklyJodiHitCount.toFloat() / totalWeeks.toFloat()) * 100f).coerceIn(0f, 100f)
             } else 0f
 
-            // 2. Weekly Pana Pass Count (at least 1 or 2 days in the week had matching Open/Close Pana touch)
+            val weeklyPanaHitCount = weekChunks.count { week ->
+                week.count { day ->
+                    day.actualOpenAnk != null && day.predictedOtc.contains(day.actualOpenAnk)
+                } >= 2
+            }
+            val panaPassRate = if (totalWeeks > 0) {
+                ((weeklyPanaHitCount.toFloat() / totalWeeks.toFloat()) * 100f).coerceIn(0f, 100f)
+            } else 0f
+
+            val strategy = "Resonance Scan: ${config.mode.displayName} (D=${config.divisor}, M=${config.multiplierFactor})"
+            val hindiDesc = "⚡ Real History Audit: Divisor ${config.divisor} aur Offset ${config.additionOffset} ke cycle sync se real history par ${String.format(Locale.ENGLISH, "%.1f%%", summary.accuracyPercentage)} pass rate nikal kar aaya."
+
+            val compositeScore = ((summary.accuracyPercentage * 0.45f) +
+                    (jodiPassRate * 0.35f) +
+                    (panaPassRate * 0.15f) +
+                    (summary.maxStreak * 1.5f)).coerceIn(0f, 100f).toInt()
+
+            DiscoveredFormulaCandidate(
+                formula = config,
+                summary = summary,
+                totalWeeksTested = totalWeeks,
+                weeklyJodiHitCount = weeklyJodiHitCount,
+                weeklyJodiPassRate = jodiPassRate,
+                weeklyPanaHitCount = weeklyPanaHitCount,
+                weeklyPanaPassRate = panaPassRate,
+                discoveryStrategy = strategy,
+                patternHindiExplanation = hindiDesc,
+                aiScoreRating = compositeScore
+            )
+        }
+
+        return evaluated
+            .sortedWith(
+                compareByDescending<DiscoveredFormulaCandidate> { it.summary.accuracyPercentage }
+                    .thenByDescending { it.summary.maxStreak }
+                    .thenByDescending { it.weeklyJodiHitCount }
+            )
+            .distinctBy { "${it.formula.mode}_${it.formula.divisor}_${it.formula.multiplierFactor}_${it.formula.includeCutDigits}" }
+            .take(maxTopResults)
+    }
+
+    /**
+     * Runs multi-heuristic deep pattern discovery against market history.
+     */
+    fun discoverFormulas(
+        marketName: String,
+        historyEntries: List<MarketHistoryEntry>,
+        targetOtcCount: Int = 4,
+        targetJodiCount: Int = 4,
+        targetPanelCount: Int = 4,
+        limitCandidates: Int = 8
+    ): List<DiscoveredFormulaCandidate> {
+        val effectiveHistory = resolveEffectiveHistory(marketName, historyEntries)
+        val candidates = mutableListOf<Triple<FormulaConfig, String, String>>()
+
+        var idCounter = 1
+
+        candidates.add(
+            Triple(
+                FormulaConfig(
+                    id = "ai_family_jodi_${idCounter++}",
+                    name = "AI Family-Jodi Master (D9-M2)",
+                    mode = FormulaEngineMode.JODI_MULTIPLIER,
+                    divisor = 9,
+                    multiplierFactor = 2,
+                    additionOffset = 1,
+                    targetOtcCount = targetOtcCount,
+                    targetJodiCount = targetJodiCount,
+                    targetPanelCount = targetPanelCount,
+                    includeCutDigits = false,
+                    isCustom = true,
+                    isLocked = false,
+                    customNotes = "Target: Jodi & Panna Balance (Family Cycle & Cross Product)"
+                ),
+                "Family Jodi & Cross Product Sync",
+                "🎯 Family Jodi & Gap Trick: Pichle result ke difference gap se Direct Cross Jodis calculate hoti hain."
+            )
+        )
+
+        candidates.add(
+            Triple(
+                FormulaConfig(
+                    id = "ai_pana_touch_${idCounter++}",
+                    name = "AI Pana-Touch Super Matrix (D7)",
+                    mode = FormulaEngineMode.PANA_SUM_MATRIX,
+                    divisor = 7,
+                    multiplierFactor = 3,
+                    additionOffset = 1,
+                    targetOtcCount = targetOtcCount,
+                    targetJodiCount = targetJodiCount,
+                    targetPanelCount = targetPanelCount,
+                    includeCutDigits = true,
+                    isCustom = true,
+                    isLocked = false,
+                    customNotes = "Target: Pana Digit Sum & Cut Matrix"
+                ),
+                "Open Pana Sum & Cut Panel Filter",
+                "💎 Pana Sum Matrix: Open Pana ke 3 anko ka total aur Cut touch single panel calculations provide karta hai."
+            )
+        )
+
+        candidates.add(
+            Triple(
+                FormulaConfig(
+                    id = "ai_classic_gold_${idCounter++}",
+                    name = "AI Classic Golden Multiplier (D9)",
+                    mode = FormulaEngineMode.A23_CLASSIC,
+                    divisor = 9,
+                    multiplierFactor = 1,
+                    additionOffset = 0,
+                    targetOtcCount = targetOtcCount,
+                    targetJodiCount = targetJodiCount,
+                    targetPanelCount = targetPanelCount,
+                    includeCutDigits = false,
+                    isCustom = true,
+                    isLocked = false,
+                    customNotes = "Multi-Factor Classic Derivation"
+                ),
+                "Classic Multi-Factor Derivation",
+                "⚡ Master Multiplier: $targetOtcCount OTC Digits + $targetJodiCount VIP Master Jodis calculation."
+            )
+        )
+
+        candidates.add(
+            Triple(
+                FormulaConfig(
+                    id = "ai_modulo_wave_${idCounter++}",
+                    name = "AI Modulo Wave Sync (D8-O3)",
+                    mode = FormulaEngineMode.MODULO_ENGINE,
+                    divisor = 8,
+                    multiplierFactor = 3,
+                    additionOffset = 3,
+                    targetOtcCount = targetOtcCount,
+                    targetJodiCount = targetJodiCount,
+                    targetPanelCount = targetPanelCount,
+                    includeCutDigits = false,
+                    isCustom = true,
+                    isLocked = false,
+                    customNotes = "Modulo Cycle Pattern"
+                ),
+                "Harmonic Modulo Cycle Filter",
+                "🌊 Modulo Cycle Pattern: 6-din ke line chart pattern ko sync karta hai."
+            )
+        )
+
+        val evaluated = candidates.map { (config, strategy, hindiExplanation) ->
+            val summary = FormulaCalculator.runBacktest(marketName, effectiveHistory, config)
+
+            val validDays = summary.results.filter { !it.isHoliday }
+            val weekChunks = validDays.chunked(6)
+            val totalWeeks = weekChunks.size.coerceAtLeast(1)
+
+            val weeklyJodiHitCount = weekChunks.count { week ->
+                week.any { day ->
+                    day.predictedOtc.size >= 2 && day.actualJodiAnks.size >= 2 &&
+                            day.predictedOtc.contains(day.actualJodiAnks[0]) &&
+                            day.predictedOtc.contains(day.actualJodiAnks[1])
+                }
+            }
+            val jodiPassRate = if (totalWeeks > 0) {
+                ((weeklyJodiHitCount.toFloat() / totalWeeks.toFloat()) * 100f).coerceIn(0f, 100f)
+            } else 0f
+
             val weeklyPanaHitCount = weekChunks.count { week ->
                 week.count { day ->
                     day.actualOpenAnk != null && day.predictedOtc.contains(day.actualOpenAnk)
@@ -295,7 +360,7 @@ object FormulaDiscoveryEngine {
             val compositeScore = ((summary.accuracyPercentage * 0.45f) +
                     (jodiPassRate * 0.35f) +
                     (panaPassRate * 0.15f) +
-                    (summary.maxStreak * 1.5f)).coerceIn(60f, 99f).toInt()
+                    (summary.maxStreak * 1.5f)).coerceIn(0f, 100f).toInt()
 
             DiscoveredFormulaCandidate(
                 formula = config,
@@ -309,21 +374,21 @@ object FormulaDiscoveryEngine {
                 patternHindiExplanation = hindiExplanation,
                 aiScoreRating = compositeScore
             )
-        }.sortedByDescending { it.aiScoreRating }
+        }.sortedByDescending { it.summary.accuracyPercentage }
 
         return evaluated.take(limitCandidates)
     }
 
     /**
-     * Get list of top detected secret pattern strategies for the market.
+     * Get list of top detected pattern strategies for the market.
      */
     fun getMarketPatternInsights(marketName: String): List<MarketPatternInsight> {
         return listOf(
             MarketPatternInsight(
-                patternTitle = "Family Jodi 8-Bracket Cycle (फैमिली जोड़ी चक्र)",
-                patternType = "JODI PASS TRICK",
-                winProbability = "91.8% Weekly Pass",
-                description = "Pichle din ke open pana aur jodi ke difference gap se 8-Jodi Family Cycle banti hai. Isse week me kam se kam 1 Jodi pass hone ki high accuracy milti hai.",
+                patternTitle = "Family Jodi Bracket Cycle (फैमिली जोड़ी चक्र)",
+                patternType = "JODI PASS PATTERN",
+                winProbability = "Calculated on real history",
+                description = "Pichle din ke open pana aur jodi ke difference gap se Family Cycle banti hai jisse direct cross pairs bante hain.",
                 recommendedFormula = FormulaConfig(
                     id = "rec_family_jodi",
                     name = "AI Family-Jodi Master (D9-M2)",
@@ -337,10 +402,10 @@ object FormulaDiscoveryEngine {
                 weeklyPanaTarget = "2 Panas / Week"
             ),
             MarketPatternInsight(
-                patternTitle = "Pana Total & Cut Touch Secret (ओपन पाना टोटल + कट टच)",
-                patternType = "PANEL PANA TRICK",
-                winProbability = "95.5% Weekly Pass",
-                description = "Open Pana ke 3 anko ka sum aur jodi total ka modulo 10 calculate karke single panel list filter hoti hai jisse 2 panne har hafte hit hote hain.",
+                patternTitle = "Pana Total & Cut Touch Strategy (ओपन पाना टोटल + कट टच)",
+                patternType = "PANEL PANA PATTERN",
+                winProbability = "Calculated on real history",
+                description = "Open Pana ke 3 anko ka sum aur jodi total ka modulo calculate karke panel list filter hoti hai.",
                 recommendedFormula = FormulaConfig(
                     id = "rec_pana_touch",
                     name = "AI Pana-Touch Super Matrix (D7)",
@@ -355,10 +420,10 @@ object FormulaDiscoveryEngine {
                 weeklyPanaTarget = "2-3 Panas / Week"
             ),
             MarketPatternInsight(
-                patternTitle = "Line Chart Column Synchronizer (6-दिन वीकली लाइन सिंक)",
+                patternTitle = "Line Chart Column Synchronizer (वीकली लाइन सिंक)",
                 patternType = "STREAK STABILIZER",
-                winProbability = "88.4% Overall OTC",
-                description = "Monday se Saturday tak ke line chart pattern ko match karke 4 OTC digits nikalta hai jo lambi win streaks deta hai.",
+                winProbability = "Calculated on real history",
+                description = "Market ke line chart pattern ko match karke 4 OTC digits nikalta hai.",
                 recommendedFormula = FormulaConfig(
                     id = "rec_line_sync",
                     name = "AI Modulo Wave Sync (D8-O3)",
@@ -372,5 +437,111 @@ object FormulaDiscoveryEngine {
                 weeklyPanaTarget = "2 Panas / Week"
             )
         )
+    }
+
+    /**
+     * Master Strategies & Research Concepts.
+     */
+    fun getExpertFormulaVicharList(): List<HighPassVichar> {
+        return listOf(
+            HighPassVichar(
+                titleHindi = "1. ग्रिड ऑटो-स्कैनिंग (Parametric Grid Search)",
+                conceptTitle = "Cyclic Resonance Optimization",
+                passRateBadge = "Verified Historical Backtest",
+                explanationHindi = "हर मार्केट (Kalyan, Shridevi, Time Bazar) का अपना मैथमैटिकल साइकिल होता है। जब Divisors (3..23) और Multipliers (1..10) को मार्केट के रियल रिज़ल्ट्स पर टेस्ट किया जाता है, तो बेस्ट परफॉर्मेंस फॉर्मूला प्राप्त होता है।",
+                formulaIdeaTip = "टिप: A23 Lab में Walk-Forward रिसर्च रन करें और ओवरफिटिंग चेक करें।",
+                mathRule = "Formula: (Open Pana + Jodi) × Multiplier ÷ Divisor + Offset"
+            ),
+            HighPassVichar(
+                titleHindi = "2. कट अंक (5-डिफरेंस) और फैमिली जोड़ी संतुलन",
+                conceptTitle = "Cut Digits & Family Mirroring",
+                passRateBadge = "Complementary Ank Touch",
+                explanationHindi = "मटका सिस्टम में 0↔5, 1↔6, 2↔7, 3↔8, 4↔9 कॉम्प्लिमेंट्री कट अंक होते हैं। 'Include Cut Digits' ऑन रखने से फॉर्मूला मिरर रिजल्ट्स को भी कवर करता है।",
+                formulaIdeaTip = "टिप: 4 OTC अंक चुनते समय 2 डायरेक्ट + 2 कट अंक का कॉम्बिनेशन स्टेबल रहता है।",
+                mathRule = "Cut Rule: Ank_Cut = (Ank + 5) % 10"
+            ),
+            HighPassVichar(
+                titleHindi = "3. त्रिमूर्ति फॉर्मूला कंसेंसस (3-Way Multi-Engine Voting)",
+                conceptTitle = "Multi-Engine Consensus Filter",
+                passRateBadge = "Consensus Validation",
+                explanationHindi = "जब 3 अलग-अलग फॉर्मूले (A23 Classic, Jodi Multiplier, Pana Sum Matrix) रन किए जाते हैं, और जो अंक तीनों में कॉमन निकलते हैं, उनका कवरेज बेहतर रहता है।",
+                formulaIdeaTip = "टिप: कॉमन अंक को OTC में VIP Digits पर रखें।",
+                mathRule = "Consensus: Digits appearing in ≥ 2 Top Formulas"
+            ),
+            HighPassVichar(
+                titleHindi = "4. वार अनुसार चाल (Day-of-Week Adaptive Matrix)",
+                conceptTitle = "Day-Wise Cyclic Shift",
+                passRateBadge = "Day Adaptive",
+                explanationHindi = "दिन के अनुसार Offset (+1 या +2) एडजस्ट करने से वीकेंड और मिडवीक में फॉर्मूला अडैप्ट करता है।",
+                formulaIdeaTip = "टिप: Mon-Tue के लिए Divisor 9 & 7, Wed-Thu के लिए Modulo Engine (D11) उपयोगी रहते हैं।",
+                mathRule = "Offset Shift: Mon/Sat = 0, Wed/Thu = +2 to +4"
+            ),
+            HighPassVichar(
+                titleHindi = "5. पाना टोटल और क्लोज़ कट टच (Pana Sum & Jodi Total)",
+                conceptTitle = "Pana Digit Sum & SP/DP Touch",
+                passRateBadge = "Pana Digit Touch",
+                explanationHindi = "ओपन पाना के 3 अंकों का जोड़ और जोड़ी के अंकों का अंतर निकालने से मास्टर जोड़ियां और पैनल फ़िल्टर होते हैं।",
+                formulaIdeaTip = "टिप: 4 Master Jodi + 4 SP/DP Panel टारगेट रखने पर अच्छा कवरेज मिलता है।",
+                mathRule = "Pana Sum = (P1+P2+P3) % 10, Jodi Gap = |Open - Close|"
+            )
+        )
+    }
+
+    /**
+     * AI Deep Auto-Tuner.
+     */
+    fun autoTuneTargetFormula(
+        marketName: String,
+        targetCategory: String,
+        historyEntries: List<MarketHistoryEntry> = emptyList(),
+        targetOtcCount: Int = 4,
+        targetJodiCount: Int = 4,
+        targetPanelCount: Int = 4
+    ): DiscoveredFormulaCandidate {
+        val effective = resolveEffectiveHistory(marketName, historyEntries)
+        val allCandidates = scanUnlimitedGridFormulas(
+            marketName = marketName,
+            historyEntries = effective,
+            targetOtcCount = targetOtcCount,
+            targetJodiCount = targetJodiCount,
+            targetPanelCount = targetPanelCount,
+            maxTopResults = 30
+        )
+
+        if (allCandidates.isEmpty()) {
+            val fallbackConfig = FormulaConfig(
+                id = "ai_tuned_${System.currentTimeMillis() % 10000}",
+                name = "AI $targetCategory Master (D9)",
+                mode = FormulaEngineMode.A23_CLASSIC,
+                divisor = 9,
+                multiplierFactor = 1,
+                additionOffset = 0,
+                targetOtcCount = targetOtcCount,
+                targetJodiCount = targetJodiCount,
+                targetPanelCount = targetPanelCount,
+                includeCutDigits = true,
+                isCustom = true,
+                isLocked = false
+            )
+            val summary = FormulaCalculator.runBacktest(marketName, effective, fallbackConfig)
+            return DiscoveredFormulaCandidate(
+                formula = fallbackConfig,
+                summary = summary,
+                totalWeeksTested = (summary.totalTestedDays / 6).coerceAtLeast(1),
+                weeklyJodiHitCount = summary.jodiPassedDays,
+                weeklyJodiPassRate = summary.jodiAccuracyPercentage,
+                weeklyPanaHitCount = summary.panelPassedDays,
+                weeklyPanaPassRate = summary.panelAccuracyPercentage,
+                discoveryStrategy = "AI Targeted Auto-Tuner ($targetCategory)",
+                patternHindiExplanation = "AI deterministic algorithm ne real historical data par test karke configuration calculate kiya hai.",
+                aiScoreRating = summary.accuracyPercentage.toInt()
+            )
+        }
+
+        return when (targetCategory.uppercase()) {
+            "JODI" -> allCandidates.maxByOrNull { it.summary.jodiAccuracyPercentage * 2f + it.summary.accuracyPercentage } ?: allCandidates.first()
+            "PANEL" -> allCandidates.maxByOrNull { it.summary.panelAccuracyPercentage * 2f + it.summary.accuracyPercentage } ?: allCandidates.first()
+            else -> allCandidates.maxByOrNull { it.summary.accuracyPercentage } ?: allCandidates.first()
+        }
     }
 }

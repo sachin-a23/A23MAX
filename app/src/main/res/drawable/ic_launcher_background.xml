@@ -5,6 +5,7 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- Deep Obsidian Sapphire Gradient Canvas -->
     <path android:pathData="M0,0h108v108h-108z">
         <aapt:attr name="android:fillColor">
             <gradient
@@ -13,19 +14,39 @@
                 android:endX="108"
                 android:endY="108"
                 android:type="linear">
-                <item android:offset="0.0" android:color="#0D1117" />
-                <item android:offset="0.5" android:color="#161B22" />
-                <item android:offset="1.0" android:color="#090D16" />
+                <item android:offset="0.0" android:color="#0B132B" />
+                <item android:offset="0.4" android:color="#070C18" />
+                <item android:offset="0.8" android:color="#0F172A" />
+                <item android:offset="1.0" android:color="#050811" />
             </gradient>
         </aapt:attr>
     </path>
-    <!-- Geometric grid accent -->
+
+    <!-- Glowing Cyber Radial Aura -->
     <path
-        android:strokeColor="#1AF59E0B"
-        android:strokeWidth="1"
-        android:pathData="M18,18 L90,18 L90,90 L18,90 Z" />
+        android:pathData="M54,54m-42,0a42,42 0,1,1 84,0a42,42 0,1,1 -84,0">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:centerX="54"
+                android:centerY="54"
+                android:gradientRadius="42"
+                android:type="radial">
+                <item android:offset="0.0" android:color="#33F59E0B" />
+                <item android:offset="0.6" android:color="#1506B6D4" />
+                <item android:offset="1.0" android:color="#00000000" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Luxury Gold & Cyan Octagonal Cyber Ring -->
     <path
-        android:strokeColor="#2506B6D4"
-        android:strokeWidth="1"
-        android:pathData="M28,28 L80,28 L80,80 L28,80 Z" />
+        android:pathData="M32,18 L76,18 L90,32 L90,76 L76,90 L32,90 L18,76 L18,32 Z"
+        android:strokeWidth="1.2"
+        android:strokeColor="#2AF59E0B"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M38,24 L70,24 L84,38 L84,70 L70,84 L38,84 L24,70 L24,38 Z"
+        android:strokeWidth="0.8"
+        android:strokeColor="#2006B6D4"
+        android:fillColor="#00000000" />
 </vector>

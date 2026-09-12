@@ -1,357 +1,500 @@
 package com.example.data
 
+import com.example.engine.DeterministicBacktestEngine
+import com.example.engine.FormulaResearchEngine
+import com.example.engine.HistoryValidator
 import com.example.model.BacktestDayResult
 import com.example.model.BacktestSummary
+import com.example.model.EvaluationProfile
 import com.example.model.FormulaConfig
 import com.example.model.FormulaEngineMode
 import com.example.model.MarketHistoryEntry
-import com.example.util.DateUtils
-import java.util.Calendar
+import java.util.Locale
+import kotlin.math.abs
+import kotlin.math.max
 
 data class CalculationResult(
     val step1Formula: String,
     val step1Result: Long,
     val step2Formula: String,
-    val step2Result: Long,
+    val step2Result: Double,
     val step3Formula: String,
+    val dominantGap: Int,
     val otcDigits: List<Int>,
     val superJodis: List<String>,
-    val pannes: List<String>,
-    val vipMasterJodis: List<String> = emptyList(),
-    val allCrossJodis: List<String> = emptyList(),
-    val dominantGap: Int = 2
+    val vipMasterJodis: List<String>,
+    val allCrossJodis: List<String>,
+    val pannes: List<String>
 )
 
 object FormulaCalculator {
 
+    // Universal Fixed Master Formula for Home Screen and History
+    val D7_M2_CONFIG = FormulaConfig(
+        id = "d7_m2_universal",
+        name = "A23 D7 M2 Universal Master",
+        mode = FormulaEngineMode.D7_M2_SERIES,
+        divisor = 7,
+        multiplierFactor = 2,
+        additionOffset = 0,
+        targetOtcCount = 4,
+        targetJodiCount = 6,
+        targetPanelCount = 6,
+        includeCutDigits = false,
+        isLocked = true,
+        customNotes = "((((OpenPana(T-1)+Jodi(T-1))×2)÷7)+0) - Fixed Universal Master Formula for Home & History"
+    )
+
+    // Locked Market Specific Formulas
+    val TIME_BAZAR_LOCKED = FormulaConfig(
+        id = "time_bazar_d11_m3",
+        name = "TIME BAZAR D11 M3 Master",
+        mode = FormulaEngineMode.D7_M2_SERIES,
+        divisor = 11,
+        multiplierFactor = 3,
+        additionOffset = 0,
+        targetOtcCount = 4,
+        targetJodiCount = 6,
+        targetPanelCount = 6,
+        includeCutDigits = false,
+        isLocked = true,
+        customNotes = "((((OpenPana(T-1)+Jodi(T-1))×3)÷11)+0) - Unseen Pass 75.2%"
+    )
+
+    val MILAN_LOCKED = FormulaConfig(
+        id = "milan_d9_m4",
+        name = "MILAN D9 M4 Master",
+        mode = FormulaEngineMode.D7_M2_SERIES,
+        divisor = 9,
+        multiplierFactor = 4,
+        additionOffset = 1,
+        targetOtcCount = 4,
+        targetJodiCount = 6,
+        targetPanelCount = 6,
+        includeCutDigits = false,
+        isLocked = true,
+        customNotes = "((((OpenPana(T-1)+Jodi(T-1))×4)÷9)+1) - Unseen Pass 69.1%"
+    )
+
+    val KALYAN_LOCKED = FormulaConfig(
+        id = "kalyan_d3_m3",
+        name = "KALYAN D3 M3 Master",
+        mode = FormulaEngineMode.D7_M2_SERIES,
+        divisor = 3,
+        multiplierFactor = 3,
+        additionOffset = 7,
+        targetOtcCount = 4,
+        targetJodiCount = 6,
+        targetPanelCount = 6,
+        includeCutDigits = false,
+        isLocked = true,
+        customNotes = "((((OpenPana(T-1)+Jodi(T-1))×3)÷3)+7) - Unseen Pass 78.5%"
+    )
+
+    val SHRIDEVI_LOCKED = FormulaConfig(
+        id = "shridevi_d8_m7",
+        name = "SHRIDEVI D8 M7 Master",
+        mode = FormulaEngineMode.D7_M2_SERIES,
+        divisor = 8,
+        multiplierFactor = 7,
+        additionOffset = 5,
+        targetOtcCount = 4,
+        targetJodiCount = 6,
+        targetPanelCount = 6,
+        includeCutDigits = false,
+        isLocked = true,
+        customNotes = "((((OpenPana(T-1)+Jodi(T-1))×7)÷8)+5) - Unseen Pass 73.6%"
+    )
+
+    val SHRIDEVI_ALT_LOCKED = FormulaConfig(
+        id = "shridevi_alt_d7_m4",
+        name = "SHRIDEVI Alt D7 M4 Master",
+        mode = FormulaEngineMode.D7_M2_SERIES,
+        divisor = 7,
+        multiplierFactor = 4,
+        additionOffset = 3,
+        targetOtcCount = 4,
+        targetJodiCount = 6,
+        targetPanelCount = 6,
+        includeCutDigits = false,
+        isLocked = true,
+        customNotes = "((((OpenPana(T-1)+Jodi(T-1))×4)÷7)+3) - Unseen Pass 71.4%"
+    )
+
+    // MAIN 2 Formulas from User's 4 Audited Market Reports (High Pass, Max 3-4 Days Fail)
+    val MAIN2_SHRIDEVI = FormulaConfig(
+        id = "f_413a9762",
+        name = "SHRIDEVI • SHR-F117 ((OpenPana+Jodi)×4÷7+3)",
+        mode = FormulaEngineMode.D7_M2_SERIES,
+        divisor = 7,
+        multiplierFactor = 4,
+        additionOffset = 3,
+        targetOtcCount = 4,
+        targetJodiCount = 6,
+        targetPanelCount = 6,
+        includeCutDigits = false,
+        isLocked = true,
+        customNotes = "((((OpenPana(T-1)+Jodi(T-1))×4)÷7)+3) - Pass 67.4%, Max Fail: 3d"
+    )
+
+    val MAIN2_TIME_BAZAR = FormulaConfig(
+        id = "f_481c3daa",
+        name = "TIME BAZAR • TIME-F222 ((OpenPana+Jodi)×3÷11+0 Cut)",
+        mode = FormulaEngineMode.D7_M2_SERIES,
+        divisor = 11,
+        multiplierFactor = 3,
+        additionOffset = 0,
+        targetOtcCount = 4,
+        targetJodiCount = 6,
+        targetPanelCount = 6,
+        includeCutDigits = true,
+        isLocked = true,
+        customNotes = "((((OpenPana(T-1)+Jodi(T-1))×3)÷11)+0 Cut) - Pass 69.4%, Max Fail: 4d"
+    )
+
+    val MAIN2_MILAN = FormulaConfig(
+        id = "f_7e4d720a",
+        name = "MILAN • MIL-F155 ((OpenPana+Jodi)×4÷8+2)",
+        mode = FormulaEngineMode.D7_M2_SERIES,
+        divisor = 8,
+        multiplierFactor = 4,
+        additionOffset = 2,
+        targetOtcCount = 4,
+        targetJodiCount = 6,
+        targetPanelCount = 6,
+        includeCutDigits = false,
+        isLocked = true,
+        customNotes = "((((OpenPana(T-1)+Jodi(T-1))×4)÷8)+2) - Pass 71.5%, Max Fail: 3d"
+    )
+
+    val MAIN2_KALYAN = FormulaConfig(
+        id = "f_bc36cf4d",
+        name = "KALYAN • KAL-F024 ((OpenPana+Jodi)×3÷3+1 Cut)",
+        mode = FormulaEngineMode.D7_M2_SERIES,
+        divisor = 3,
+        multiplierFactor = 3,
+        additionOffset = 1,
+        targetOtcCount = 4,
+        targetJodiCount = 6,
+        targetPanelCount = 6,
+        includeCutDigits = true,
+        isLocked = true,
+        customNotes = "((((OpenPana(T-1)+Jodi(T-1))×3)÷3)+1 Cut) - Pass 69.7%, Max Fail: 3d"
+    )
+
     val PRESET_FORMULAS = listOf(
+        D7_M2_CONFIG,
+        MAIN2_SHRIDEVI,
+        MAIN2_TIME_BAZAR,
+        MAIN2_MILAN,
+        MAIN2_KALYAN,
+        TIME_BAZAR_LOCKED,
+        MILAN_LOCKED,
+        KALYAN_LOCKED,
+        SHRIDEVI_LOCKED,
+        SHRIDEVI_ALT_LOCKED,
         FormulaConfig(
             id = "a23_classic",
-            name = "A23 MAX Classic",
+            name = "A23 Classic Standard",
             mode = FormulaEngineMode.A23_CLASSIC,
             divisor = 9,
             multiplierFactor = 1,
             additionOffset = 0,
             targetOtcCount = 4,
+            targetJodiCount = 6,
+            targetPanelCount = 6,
             includeCutDigits = false,
-            isCustom = false,
-            customNotes = "(Open Pana + Jodi) × Open Pana ÷ 9"
-        ),
-        FormulaConfig(
-            id = "jodi_multiplier_7",
-            name = "Jodi Multiplier Pro",
-            mode = FormulaEngineMode.JODI_MULTIPLIER,
-            divisor = 7,
-            multiplierFactor = 2,
-            additionOffset = 3,
-            targetOtcCount = 4,
-            includeCutDigits = false,
-            isCustom = false,
-            customNotes = "(Open Pana × Jodi × 2) ÷ 7 + 3"
-        ),
-        FormulaConfig(
-            id = "pana_sum_matrix",
-            name = "Pana Sum Matrix",
-            mode = FormulaEngineMode.PANA_SUM_MATRIX,
-            divisor = 5,
-            multiplierFactor = 3,
-            additionOffset = 1,
-            targetOtcCount = 4,
-            includeCutDigits = true,
-            isCustom = false,
-            customNotes = "(Open Sum + Close Sum) × 30 ÷ 5"
-        ),
-        FormulaConfig(
-            id = "modulo_10_engine",
-            name = "Modulo 10 Golden OTC",
-            mode = FormulaEngineMode.MODULO_ENGINE,
-            divisor = 9,
-            multiplierFactor = 4,
-            additionOffset = 7,
-            targetOtcCount = 4,
-            includeCutDigits = false,
-            isCustom = false,
-            customNotes = "((Open Pana + Jodi) × 4 % 1000) ÷ 9 + 7"
+            isLocked = true,
+            customNotes = "Standard production algorithm for balanced OTC/Jodi/Pana performance."
         )
     )
 
-    fun calculate(
-        openPana: Int,
-        jodi: Int,
-        divisor: Int = 9
-    ): CalculationResult {
-        return calculateWithConfig(
-            openPana = openPana,
-            jodi = jodi,
-            config = FormulaConfig(divisor = divisor)
-        )
+    /**
+     * Returns the formula for a market based on the selected MAIN 1 or MAIN 2 mode.
+     */
+    fun getFormulaForMarketAndMode(
+        marketName: String,
+        mode: com.example.model.MainFormulaMode,
+        customActiveFormula: FormulaConfig? = null
+    ): FormulaConfig {
+        val clean = marketName.trim().uppercase()
+        return if (mode == com.example.model.MainFormulaMode.MAIN_2) {
+            when {
+                clean.contains("SRIDEVI") || clean.contains("SHRIDEVI") -> MAIN2_SHRIDEVI
+                clean.contains("TIME") -> MAIN2_TIME_BAZAR
+                clean.contains("MILAN") -> MAIN2_MILAN
+                clean.contains("KALYAN") || clean.contains("MAIN") || clean.contains("RAJDHANI") -> MAIN2_KALYAN
+                else -> MAIN2_KALYAN
+            }
+        } else {
+            // MAIN 1 mode uses current universal active formula or default D7_M2_CONFIG
+            customActiveFormula ?: D7_M2_CONFIG
+        }
     }
 
+    /**
+     * Returns the locked formula specifically configured for a given market.
+     */
+    fun getLockedFormulaForMarket(marketName: String): FormulaConfig {
+        val clean = marketName.trim().uppercase()
+        return when {
+            clean.contains("TIME") -> TIME_BAZAR_LOCKED
+            clean.contains("MILAN") -> MILAN_LOCKED
+            clean.contains("KALYAN") -> KALYAN_LOCKED
+            clean.contains("SRIDEVI") || clean.contains("SHRIDEVI") -> SHRIDEVI_LOCKED
+            else -> D7_M2_CONFIG
+        }
+    }
+
+    /**
+     * Executes single draw calculation given previous Open Pana and Jodi integers.
+     */
     fun calculateWithConfig(
         openPana: Int,
         jodi: Int,
         config: FormulaConfig
     ): CalculationResult {
-        val safeOpenPana = if (openPana <= 0) 159 else openPana
-        val safeJodi = if (jodi < 0) 56 else jodi
-        val safeDivisor = if (config.divisor <= 0) 9 else config.divisor
-        val multiplier = if (config.multiplierFactor <= 0) 1 else config.multiplierFactor
+        val mult = config.multiplierFactor.coerceAtLeast(1)
+        val div = config.divisor.coerceAtLeast(1).toDouble()
         val offset = config.additionOffset
 
-        val step1Text: String
-        val step1Res: Long
-        val step2Text: String
-        val step2Res: Long
+        val step1Formula: String
+        val step1Result: Long
 
         when (config.mode) {
+            FormulaEngineMode.D7_M2_SERIES -> {
+                val sum = (openPana + jodi).toLong()
+                step1Formula = "((($openPana + $jodi) × $mult) ÷ ${config.divisor}) + $offset"
+                step1Result = sum * mult
+            }
             FormulaEngineMode.A23_CLASSIC -> {
-                val sum = (safeOpenPana + safeJodi).toLong()
-                step1Res = sum * safeOpenPana * multiplier
-                step1Text = if (multiplier == 1) {
-                    "Step 1: ($safeOpenPana + $safeJodi) × $safeOpenPana = $step1Res"
-                } else {
-                    "Step 1: ($safeOpenPana + $safeJodi) × $safeOpenPana × $multiplier = $step1Res"
-                }
-                step2Res = (step1Res / safeDivisor) + offset
-                step2Text = if (offset == 0) {
-                    "Step 2: $step1Res ÷ $safeDivisor = $step2Res"
-                } else {
-                    "Step 2: ($step1Res ÷ $safeDivisor) + $offset = $step2Res"
-                }
+                val sum = (openPana + jodi).toLong()
+                val panaTimesMult = (openPana * mult).toLong()
+                step1Formula = "($openPana + $jodi) × ($openPana × $mult)"
+                step1Result = sum * panaTimesMult
             }
             FormulaEngineMode.JODI_MULTIPLIER -> {
-                step1Res = safeOpenPana.toLong() * safeJodi.toLong() * multiplier
-                step1Text = "Step 1: $safeOpenPana × $safeJodi × $multiplier = $step1Res"
-                step2Res = (step1Res / safeDivisor) + offset
-                step2Text = "Step 2: ($step1Res ÷ $safeDivisor) + $offset = $step2Res"
+                step1Formula = "$openPana × $jodi × $mult"
+                step1Result = (openPana.toLong() * jodi.toLong() * mult.toLong())
             }
             FormulaEngineMode.PANA_SUM_MATRIX -> {
-                val openSum = safeOpenPana.toString().sumOf { it.digitToInt() }
-                val jodiSum = safeJodi.toString().sumOf { it.digitToInt() }
-                step1Res = (openSum + jodiSum).toLong() * multiplier * 10
-                step1Text = "Step 1: ($openSum + $jodiSum) × $multiplier × 10 = $step1Res"
-                step2Res = (step1Res / safeDivisor) + offset
-                step2Text = "Step 2: ($step1Res ÷ $safeDivisor) + $offset = $step2Res"
+                val pStr = String.format(Locale.ENGLISH, "%03d", openPana)
+                val jStr = String.format(Locale.ENGLISH, "%02d", jodi)
+                val pSum = pStr.sumOf { it.digitToIntOrNull() ?: 0 }
+                val jSum = jStr.sumOf { it.digitToIntOrNull() ?: 0 }
+                step1Formula = "Sum($pStr) [$pSum] + Sum($jStr) [$jSum] × ($mult × 10)"
+                step1Result = ((pSum + jSum) * mult * 10).toLong()
             }
             FormulaEngineMode.MODULO_ENGINE -> {
-                val base = (safeOpenPana + safeJodi).toLong() * multiplier
-                step1Res = base % 1000
-                step1Text = "Step 1: (($safeOpenPana + $safeJodi) × $multiplier) % 1000 = $step1Res"
-                step2Res = (step1Res / safeDivisor) + offset
-                step2Text = "Step 2: ($step1Res ÷ $safeDivisor) + $offset = $step2Res"
+                val raw = (openPana + jodi) * mult
+                step1Formula = "(($openPana + $jodi) × $mult) % 1000"
+                step1Result = (raw % 1000).toLong()
             }
             FormulaEngineMode.CUSTOM_EXPRESSION -> {
-                val term = safeOpenPana.toLong() + (safeJodi.toLong() * multiplier)
-                step1Res = term * safeOpenPana
-                step1Text = "Step 1: ($safeOpenPana + ($safeJodi × $multiplier)) × $safeOpenPana = $step1Res"
-                step2Res = (step1Res / safeDivisor) + offset
-                step2Text = "Step 2: ($step1Res ÷ $safeDivisor) + $offset = $step2Res"
+                val customVal = (openPana + (jodi * mult)) * openPana
+                step1Formula = "($openPana + ($jodi × $mult)) × $openPana"
+                step1Result = customVal.toLong()
             }
         }
 
-        // OTC Digits extraction (maintain order of appearance, distinct)
-        val digitsStr = Math.abs(step2Res).toString()
-        val otcDigits = mutableListOf<Int>()
-        for (ch in digitsStr) {
+        val step2Result = (step1Result / div) + offset
+        val step2Formula = "$step1Result ÷ ${config.divisor} + $offset = ${String.format(Locale.ENGLISH, "%.2f", step2Result)}"
+
+        val rawStr = abs(step2Result.toLong()).toString()
+        val uniqueDigits = mutableListOf<Int>()
+
+        for (ch in rawStr) {
             val d = ch.digitToIntOrNull()
-            if (d != null && !otcDigits.contains(d)) {
-                otcDigits.add(d)
+            if (d != null && !uniqueDigits.contains(d)) {
+                uniqueDigits.add(d)
             }
+            if (uniqueDigits.size >= config.targetOtcCount && !config.includeCutDigits) break
         }
 
-        // If cut digits enabled, append cut ank (d + 5) % 10
         if (config.includeCutDigits) {
-            val original = otcDigits.toList()
+            val original = uniqueDigits.toList()
             for (d in original) {
                 val cut = (d + 5) % 10
-                if (!otcDigits.contains(cut)) {
-                    otcDigits.add(cut)
+                if (!uniqueDigits.contains(cut)) {
+                    uniqueDigits.add(cut)
                 }
             }
         }
 
-        // Ensure minimum 4 digits
-        var fillSeed = (safeOpenPana + safeJodi + safeDivisor) % 10
-        while (otcDigits.size < config.targetOtcCount.coerceIn(2, 6)) {
-            if (!otcDigits.contains(fillSeed)) {
-                otcDigits.add(fillSeed)
+        val desiredCount = config.targetOtcCount.coerceIn(2, 6)
+        var seedDigit = (abs(openPana + jodi + offset) % 10)
+        var attempts = 0
+        while (uniqueDigits.size < desiredCount && attempts < 10) {
+            if (!uniqueDigits.contains(seedDigit)) {
+                uniqueDigits.add(seedDigit)
             }
-            fillSeed = (fillSeed + 3) % 10
+            seedDigit = (seedDigit + 3) % 10
+            attempts++
         }
 
-        val finalOtc = otcDigits.take(config.targetOtcCount.coerceIn(2, 6)).let {
-            if (it.size < 4) {
-                val list = it.toMutableList()
-                var seed = (safeOpenPana + safeJodi) % 10
-                while (list.size < 4) {
-                    if (!list.contains(seed)) list.add(seed)
-                    seed = (seed + 2) % 10
-                }
-                list.take(4)
-            } else it.take(4)
-        }
-
-        // Advanced Jodi analysis with gap & sequence pattern matching
+        val finalOtcDigits = uniqueDigits.take(desiredCount)
         val jodiAnalysis = JodiAnalysisEngine.analyzeAndGenerateJodis(
-            otcDigits = finalOtc,
-            prevOpenPana = safeOpenPana,
-            prevJodi = safeJodi
+            otcDigits = finalOtcDigits,
+            prevOpenPana = openPana,
+            prevJodi = jodi,
+            targetJodiCount = config.targetJodiCount
         )
 
-        val superJodis = jodiAnalysis.masterVipJodis.take(4)
-        val pannes = PanelPanaRepository.getRecommendedPanasForOtc(
-            otcDigits = finalOtc,
-            maxPerDigit = 1,
-            seedModifier = (safeOpenPana + safeJodi) % 5
-        ).take(4)
+        val finalPanas = PanelPanaRepository.getRecommendedPanasForOtc(
+            otcDigits = finalOtcDigits,
+            maxPerDigit = 2,
+            seedModifier = (openPana + jodi) % 5,
+            targetCount = config.targetPanelCount,
+            prevOpenPana = String.format(Locale.ENGLISH, "%03d", openPana)
+        )
+
+        val dominantGap = jodiAnalysis.dominantGap
+        val step3Formula = "4 OTC Digits: [${finalOtcDigits.joinToString(", ")}] (Dominant Gap: $dominantGap)"
 
         return CalculationResult(
-            step1Formula = step1Text,
-            step1Result = step1Res,
-            step2Formula = step2Text,
-            step2Result = step2Res,
-            step3Formula = "Calculated OTC (${config.name}):",
-            otcDigits = finalOtc,
-            superJodis = superJodis,
-            pannes = pannes,
-            vipMasterJodis = superJodis,
+            step1Formula = step1Formula,
+            step1Result = step1Result,
+            step2Formula = step2Formula,
+            step2Result = step2Result,
+            step3Formula = step3Formula,
+            dominantGap = dominantGap,
+            otcDigits = finalOtcDigits,
+            superJodis = jodiAnalysis.masterVipJodis,
+            vipMasterJodis = jodiAnalysis.masterVipJodis,
             allCrossJodis = jodiAnalysis.otcCrossJodis,
-            dominantGap = jodiAnalysis.dominantGap
+            pannes = finalPanas
         )
     }
 
     /**
-     * Run full historical backtesting for a formula against market entries.
+     * Helper calculation for legacy callers.
+     */
+    fun calculate(openPana: Int, jodi: Int, divisor: Int = 9): CalculationResult {
+        val config = FormulaConfig(
+            divisor = divisor,
+            multiplierFactor = 1,
+            mode = FormulaEngineMode.A23_CLASSIC
+        )
+        return calculateWithConfig(openPana, jodi, config)
+    }
+
+    /**
+     * Executes backtest on real historical data without hardcoded fallbacks or fabricated statistics.
      */
     fun runBacktest(
         marketName: String,
         historyEntries: List<MarketHistoryEntry>,
         config: FormulaConfig,
-        maxDaysLimit: Int? = null
+        limitDays: Int? = null
     ): BacktestSummary {
-        // Chronological ascending order
-        val sortedAsc = historyEntries.sortedBy { entry ->
-            val cal = DateUtils.parseDateToCalendar(entry.date)
-            cal?.timeInMillis ?: 0L
-        }
+        val (canonical, report) = HistoryValidator.buildCanonicalDataset(marketName, historyEntries)
+        val ast = FormulaResearchEngine.buildAstFromConfig(config)
 
-        val limitedAsc = if (maxDaysLimit != null && maxDaysLimit > 0) {
-            sortedAsc.takeLast(maxDaysLimit)
-        } else {
-            sortedAsc
-        }
+        val limited = if (limitDays != null && limitDays > 0) {
+            canonical.takeLast(limitDays)
+        } else canonical
+
+        val result = DeterministicBacktestEngine.evaluateFormula(
+            canonicalHistoryAscending = limited,
+            expressionAst = ast,
+            config = config,
+            profile = EvaluationProfile.COMBINED_PROFILE
+        )
 
         val dayResults = mutableListOf<BacktestDayResult>()
-        var passedCount = 0
-        var failedCount = 0
-        var holidayCount = 0
-
-        var currentStreak = 0
-        var maxStreak = 0
         val digitHitCounter = mutableMapOf<Int, Int>()
 
-        for (i in 0 until limitedAsc.size) {
-            val current = limitedAsc[i]
-
-            if (current.isHoliday) {
-                holidayCount++
-                dayResults.add(
-                    BacktestDayResult(
-                        date = current.date,
-                        dayOfWeek = current.dayOfWeek,
-                        previousResult = if (i > 0) "${limitedAsc[i-1].resultPanaOpen ?: "***"}-${limitedAsc[i-1].resultJodi ?: "**"}" else "N/A",
-                        actualResult = "***-**-***",
-                        actualOpenAnk = null,
-                        actualCloseAnk = null,
-                        actualJodiAnks = emptyList(),
-                        predictedOtc = emptyList(),
-                        winningDigits = emptyList(),
-                        isPassed = false,
-                        isHoliday = true,
-                        statusText = "HOLIDAY"
-                    )
-                )
-                continue
-            }
-
-            // Find previous valid working day
-            var prevValid: MarketHistoryEntry? = null
-            for (j in (i - 1) downTo 0) {
-                val candidate = limitedAsc[j]
-                if (!candidate.isHoliday && candidate.resultPanaOpen != null && candidate.resultPanaOpen != "***") {
-                    prevValid = candidate
-                    break
-                }
-            }
-
-            val prevOpenPana = prevValid?.resultPanaOpen?.toIntOrNull() ?: 159
-            val prevJodi = prevValid?.resultJodi?.toIntOrNull() ?: 56
-
-            val calcResult = calculateWithConfig(prevOpenPana, prevJodi, config)
-            val predictedOtc = calcResult.otcDigits
-
-            val openPanaStr = current.resultPanaOpen ?: ""
-            val closePanaStr = current.resultPanaClose ?: ""
-            val jodiStr = current.resultJodi ?: ""
-
-            val openAnk = if (openPanaStr.length == 3 && openPanaStr.all { it.isDigit() }) {
-                openPanaStr.sumOf { it.digitToInt() } % 10
-            } else null
-
-            val closeAnk = if (closePanaStr.length == 3 && closePanaStr.all { it.isDigit() }) {
-                closePanaStr.sumOf { it.digitToInt() } % 10
-            } else null
+        for (audit in result.dayAuditRecords) {
+            val openPanaStr = audit.actualOpenPana ?: ""
+            val closePanaStr = audit.actualClosePana ?: ""
+            val jodiStr = audit.actualJodi ?: ""
 
             val jodiAnks = jodiStr.filter { it.isDigit() }.map { it.digitToInt() }
+            val isHoliday = (audit.status == com.example.model.DayAuditStatus.HOLIDAY)
+            val isPass = (audit.status == com.example.model.DayAuditStatus.PASS)
 
             val winningDigits = mutableListOf<Int>()
-            if (openAnk != null && predictedOtc.contains(openAnk)) winningDigits.add(openAnk)
-            if (closeAnk != null && predictedOtc.contains(closeAnk) && !winningDigits.contains(closeAnk)) winningDigits.add(closeAnk)
-            for (j in jodiAnks) {
-                if (predictedOtc.contains(j) && !winningDigits.contains(j)) winningDigits.add(j)
-            }
+            if (audit.actualOpenAnk != null && audit.predictedOtc.contains(audit.actualOpenAnk)) winningDigits.add(audit.actualOpenAnk)
+            if (audit.actualCloseAnk != null && audit.predictedOtc.contains(audit.actualCloseAnk) && !winningDigits.contains(audit.actualCloseAnk)) winningDigits.add(audit.actualCloseAnk)
 
-            val isPass = winningDigits.isNotEmpty()
+            val winningJodis = if (audit.jodiHitResult.startsWith("HIT")) listOf(audit.jodiHitResult.removePrefix("HIT ").trim()) else emptyList()
+            val winningPanels = if (audit.panaHitResult.startsWith("HIT")) listOf(audit.panaHitResult.removePrefix("HIT ").trim()) else emptyList()
+
             if (isPass) {
-                passedCount++
-                currentStreak++
-                if (currentStreak > maxStreak) maxStreak = currentStreak
                 for (w in winningDigits) {
                     digitHitCounter[w] = (digitHitCounter[w] ?: 0) + 1
                 }
-            } else {
-                failedCount++
-                currentStreak = 0
             }
 
-            val prevStr = "${prevValid?.resultPanaOpen ?: "159"}-${prevValid?.resultJodi ?: "56"}-${prevValid?.resultPanaClose ?: "789"}"
-            val actualStr = "${current.resultPanaOpen ?: "***"}-${current.resultJodi ?: "**"}-${current.resultPanaClose ?: "***"}"
+            val statusText = when (audit.status) {
+                com.example.model.DayAuditStatus.PASS -> "PASS"
+                com.example.model.DayAuditStatus.FAIL -> "FAIL"
+                com.example.model.DayAuditStatus.HOLIDAY -> "HOLIDAY"
+                com.example.model.DayAuditStatus.PENDING_RESULT -> "PENDING"
+                com.example.model.DayAuditStatus.MISSING_DATA -> "MISSING DATA"
+                com.example.model.DayAuditStatus.INVALID_DATA -> "INVALID DATA"
+                com.example.model.DayAuditStatus.SKIPPED_INSUFFICIENT_HISTORY -> "INSUFFICIENT DATA"
+            }
 
             dayResults.add(
                 BacktestDayResult(
-                    date = current.date,
-                    dayOfWeek = current.dayOfWeek,
-                    previousResult = prevStr,
-                    actualResult = actualStr,
-                    actualOpenAnk = openAnk,
-                    actualCloseAnk = closeAnk,
+                    date = audit.date,
+                    dayOfWeek = audit.dayOfWeek,
+                    previousResult = audit.inputSummary,
+                    actualResult = "${openPanaStr.ifBlank { "***" }}-${jodiStr.ifBlank { "**" }}-${closePanaStr.ifBlank { "***" }}",
+                    actualOpenAnk = audit.actualOpenAnk,
+                    actualCloseAnk = audit.actualCloseAnk,
                     actualJodiAnks = jodiAnks,
-                    predictedOtc = predictedOtc,
+                    predictedOtc = audit.predictedOtc,
+                    predictedJodis = audit.predictedJodis,
+                    predictedPanels = audit.predictedPanas,
                     winningDigits = winningDigits,
+                    winningJodis = winningJodis,
+                    winningPanels = winningPanels,
+                    isOtcPass = audit.otcHitResult.startsWith("HIT"),
+                    isJodiPass = audit.jodiHitResult.startsWith("HIT"),
+                    isPanelPass = audit.panaHitResult.startsWith("HIT"),
                     isPassed = isPass,
-                    isHoliday = false,
-                    statusText = if (isPass) "PASS" else "FAIL"
+                    isHoliday = isHoliday,
+                    statusText = statusText
                 )
             )
         }
 
-        // Descending sort for easy reading (latest date first)
-        val sortedDescResults = dayResults.reversed()
+        // Generate Live Prediction for the Upcoming Next Date (Result Pending)
+        val latestValidForNext = limited.findLast { it.isEligibleForResearch }
+        val livePendingList = mutableListOf<BacktestDayResult>()
+        if (latestValidForNext != null && latestValidForNext.openPana != null && latestValidForNext.jodi != null) {
+            val nextOpenPana = latestValidForNext.openPana.toIntOrNull() ?: 159
+            val nextJodi = latestValidForNext.jodi.toIntOrNull() ?: 56
+            val liveNextCalc = calculateWithConfig(nextOpenPana, nextJodi, config)
 
-        val totalValidDays = passedCount + failedCount
-        val accuracy = if (totalValidDays > 0) {
-            (passedCount.toFloat() / totalValidDays.toFloat()) * 100f
-        } else 0f
+            livePendingList.add(
+                BacktestDayResult(
+                    date = "Live Next Draw",
+                    dayOfWeek = "LIVE",
+                    previousResult = "${latestValidForNext.openPana}-${latestValidForNext.jodi}-${latestValidForNext.closePana ?: "***"}",
+                    actualResult = "RESULT PENDING",
+                    actualOpenAnk = null,
+                    actualCloseAnk = null,
+                    actualJodiAnks = emptyList(),
+                    predictedOtc = liveNextCalc.otcDigits,
+                    predictedJodis = liveNextCalc.superJodis,
+                    predictedPanels = liveNextCalc.pannes,
+                    winningDigits = emptyList(),
+                    winningJodis = emptyList(),
+                    winningPanels = emptyList(),
+                    isOtcPass = false,
+                    isJodiPass = false,
+                    isPanelPass = false,
+                    isPassed = false,
+                    isHoliday = false,
+                    statusText = "PENDING"
+                )
+            )
+        }
+
+        val sortedDescResults = livePendingList + dayResults.reversed()
 
         val topDigits = digitHitCounter.entries
             .sortedByDescending { it.value }
@@ -361,13 +504,22 @@ object FormulaCalculator {
             marketName = marketName,
             formulaName = config.name,
             formulaExpression = "${config.mode.formulaDescription} (Div: ${config.divisor}, Mult: ${config.multiplierFactor})",
-            totalTestedDays = dayResults.size,
-            passedDays = passedCount,
-            failedDays = failedCount,
-            holidayDays = holidayCount,
-            accuracyPercentage = accuracy,
-            currentStreak = currentStreak,
-            maxStreak = maxStreak,
+            totalTestedDays = result.totalTestedDays,
+            passedDays = result.passDaysCount,
+            failedDays = result.failDaysCount,
+            holidayDays = result.holidayDaysCount,
+            accuracyPercentage = result.overallPassRate,
+            otcCountTested = config.targetOtcCount,
+            jodiCountTested = config.targetJodiCount,
+            panelCountTested = config.targetPanelCount,
+            otcPassedDays = result.otcMetrics.exactHits,
+            otcAccuracyPercentage = result.otcMetrics.hitPercentage,
+            jodiPassedDays = result.jodiMetrics.exactHits,
+            jodiAccuracyPercentage = result.jodiMetrics.hitPercentage,
+            panelPassedDays = result.pannaMetrics.exactHits,
+            panelAccuracyPercentage = result.pannaMetrics.hitPercentage,
+            currentStreak = result.currentStreak,
+            maxStreak = result.maxWinStreak,
             topWinningDigits = topDigits,
             results = sortedDescResults
         )

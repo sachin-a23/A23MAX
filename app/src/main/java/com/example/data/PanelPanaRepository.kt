@@ -113,47 +113,103 @@ object PanelPanaRepository {
     }
 
     /**
-     * Selects Top recommended Panas (1 per OTC digit, exactly 4 Panas in total).
+     * Selects Top recommended Panas (SP & DP distributed over OTC digits, targetCount: 4, 6, 8)
+     * using Satta Matka Touch & Harmonic Chart Patterns.
      */
     fun getRecommendedPanasForOtc(
         otcDigits: List<Int>,
-        maxPerDigit: Int = 1,
-        seedModifier: Int = 0
+        maxPerDigit: Int = 2,
+        seedModifier: Int = 0,
+        targetCount: Int = 4,
+        prevOpenPana: String? = null,
+        prevClosePana: String? = null
     ): List<String> {
+        val count = targetCount.coerceIn(4, 8)
         val result = mutableListOf<String>()
 
-        val distinctOtc = otcDigits.distinct().take(4)
-        for ((index, digit) in distinctOtc.withIndex()) {
+        val distinctOtc = if (otcDigits.isNotEmpty()) otcDigits.distinct() else listOf(1, 2, 3, 4)
+
+        // Extract touch digits from previous draw
+        val touchDigits = mutableSetOf<Int>()
+        prevOpenPana?.filter { it.isDigit() }?.forEach { touchDigits.add(it.digitToInt()) }
+        prevClosePana?.filter { it.isDigit() }?.forEach { touchDigits.add(it.digitToInt()) }
+
+        // Score each pana for the OTC digits
+        for (digit in distinctOtc) {
             val (spList, dpList, _) = getCategorizedPanas(digit)
             
-            val spPickIndex = (index + seedModifier) % (if (spList.isNotEmpty()) spList.size else 1)
-            val spPick = spList.getOrNull(spPickIndex) ?: spList.firstOrNull()
+            // Prioritize SPs that contain touch digits or classic Matka combinations
+            val sortedSp = spList.sortedByDescending { pana ->
+                var score = 50
+                pana.forEach { ch ->
+                    val d = ch.digitToInt()
+                    if (touchDigits.contains(d)) score += 15
+                    if (distinctOtc.contains(d)) score += 10
+                }
+                score
+            }
 
+            val sortedDp = dpList.sortedByDescending { pana ->
+                var score = 40
+                pana.forEach { ch ->
+                    val d = ch.digitToInt()
+                    if (touchDigits.contains(d)) score += 15
+                }
+                score
+            }
+
+            // Pick 1 high-probability SP
+            val spPick = sortedSp.firstOrNull { !result.contains(it) } ?: sortedSp.firstOrNull()
             if (spPick != null && !result.contains(spPick)) {
                 result.add(spPick)
-            } else if (dpList.isNotEmpty()) {
-                val dpPick = dpList.firstOrNull()
+            }
+
+            // If count allows, pick 1 high-probability DP
+            if (result.size < count && sortedDp.isNotEmpty()) {
+                val dpPick = sortedDp.firstOrNull { !result.contains(it) }
                 if (dpPick != null && !result.contains(dpPick)) {
                     result.add(dpPick)
                 }
             }
+
+            if (result.size >= count) break
         }
 
-        // Ensure exactly 4 panels if possible
-        if (result.size < 4 && distinctOtc.isNotEmpty()) {
+        // Fill remaining slots with top SPs
+        if (result.size < count) {
             for (digit in distinctOtc) {
-                val allPanas = getPanasForDigit(digit)
-                for (p in allPanas) {
+                val (spList, _, _) = getCategorizedPanas(digit)
+                for (p in spList) {
                     if (!result.contains(p)) {
                         result.add(p)
-                        if (result.size == 4) break
+                        if (result.size >= count) break
                     }
                 }
-                if (result.size == 4) break
+                if (result.size >= count) break
             }
         }
 
-        return result.take(4)
+        return result.take(count)
+    }
+
+    /**
+     * Check if a given Pana is a Cut/Family Pana of another Pana.
+     */
+    fun isFamilyPana(pana1: String, pana2: String): Boolean {
+        if (pana1.length != 3 || pana2.length != 3) return false
+        val d1 = pana1.map { it.digitToInt() }.sorted()
+        val d2 = pana2.map { it.digitToInt() }.sorted()
+
+        // Check if digits are cut equivalents
+        var cutMatchCount = 0
+        for (i in 0..2) {
+            val a = d1[i]
+            val b = d2[i]
+            if (a == b || (a + 5) % 10 == b || (b + 5) % 10 == a) {
+                cutMatchCount++
+            }
+        }
+        return cutMatchCount >= 2
     }
 
     /**

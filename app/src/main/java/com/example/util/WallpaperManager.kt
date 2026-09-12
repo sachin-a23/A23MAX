@@ -300,6 +300,9 @@ object WallpaperManager {
     private const val KEY_ACTIVE_FORMULA_OFFSET = "key_active_formula_offset"
     private const val KEY_ACTIVE_FORMULA_CUT = "key_active_formula_cut"
     private const val KEY_ACTIVE_FORMULA_OTC_COUNT = "key_active_formula_otc_count"
+    private const val KEY_ACTIVE_FORMULA_JODI_COUNT = "key_active_formula_jodi_count"
+    private const val KEY_ACTIVE_FORMULA_PANEL_COUNT = "key_active_formula_panel_count"
+    private const val KEY_ACTIVE_FORMULA_LOCKED = "key_active_formula_locked"
     private const val KEY_SAVED_FORMULAS_JSON = "key_saved_formulas_json"
 
     fun saveFormulaSettings(
@@ -318,10 +321,13 @@ object WallpaperManager {
                 .putInt(KEY_ACTIVE_FORMULA_OFFSET, activeFormula.additionOffset)
                 .putBoolean(KEY_ACTIVE_FORMULA_CUT, activeFormula.includeCutDigits)
                 .putInt(KEY_ACTIVE_FORMULA_OTC_COUNT, activeFormula.targetOtcCount)
+                .putInt(KEY_ACTIVE_FORMULA_JODI_COUNT, activeFormula.targetJodiCount)
+                .putInt(KEY_ACTIVE_FORMULA_PANEL_COUNT, activeFormula.targetPanelCount)
+                .putBoolean(KEY_ACTIVE_FORMULA_LOCKED, activeFormula.isLocked)
 
-            // Serialize saved formulas to simple format: id|name|mode|divisor|multiplier|offset|cut|count
+            // Serialize saved formulas to simple format: id::name::mode::divisor::multiplier::offset::cut::otcCount::notes::jodiCount::panelCount
             val serializedList = savedFormulas.map { f ->
-                "${f.id}::${f.name}::${f.mode.name}::${f.divisor}::${f.multiplierFactor}::${f.additionOffset}::${f.includeCutDigits}::${f.targetOtcCount}::${f.customNotes}"
+                "${f.id}::${f.name}::${f.mode.name}::${f.divisor}::${f.multiplierFactor}::${f.additionOffset}::${f.includeCutDigits}::${f.targetOtcCount}::${f.customNotes}::${f.targetJodiCount}::${f.targetPanelCount}"
             }.joinToString("###")
 
             editor.putString(KEY_SAVED_FORMULAS_JSON, serializedList)
@@ -346,7 +352,10 @@ object WallpaperManager {
             val multiplier = prefs.getInt(KEY_ACTIVE_FORMULA_MULTIPLIER, 1)
             val offset = prefs.getInt(KEY_ACTIVE_FORMULA_OFFSET, 0)
             val cut = prefs.getBoolean(KEY_ACTIVE_FORMULA_CUT, false)
-            val count = prefs.getInt(KEY_ACTIVE_FORMULA_OTC_COUNT, 4)
+            val otcCount = prefs.getInt(KEY_ACTIVE_FORMULA_OTC_COUNT, 4)
+            val jodiCount = prefs.getInt(KEY_ACTIVE_FORMULA_JODI_COUNT, 4)
+            val panelCount = prefs.getInt(KEY_ACTIVE_FORMULA_PANEL_COUNT, 4)
+            val isLocked = prefs.getBoolean(KEY_ACTIVE_FORMULA_LOCKED, true)
 
             val active = com.example.model.FormulaConfig(
                 id = id,
@@ -356,7 +365,10 @@ object WallpaperManager {
                 multiplierFactor = multiplier,
                 additionOffset = offset,
                 includeCutDigits = cut,
-                targetOtcCount = count,
+                targetOtcCount = otcCount,
+                targetJodiCount = jodiCount,
+                targetPanelCount = panelCount,
+                isLocked = isLocked,
                 isCustom = id.startsWith("custom_")
             )
 
@@ -373,6 +385,8 @@ object WallpaperManager {
                             } catch (e: Exception) {
                                 com.example.model.FormulaEngineMode.A23_CLASSIC
                             }
+                            val jCount = if (parts.size > 9) parts[9].toIntOrNull() ?: 4 else 4
+                            val pCount = if (parts.size > 10) parts[10].toIntOrNull() ?: 4 else 4
                             savedList.add(
                                 com.example.model.FormulaConfig(
                                     id = parts[0],
@@ -383,6 +397,9 @@ object WallpaperManager {
                                     additionOffset = parts[5].toIntOrNull() ?: 0,
                                     includeCutDigits = parts[6].toBooleanStrictOrNull() ?: false,
                                     targetOtcCount = parts[7].toIntOrNull() ?: 4,
+                                    targetJodiCount = jCount,
+                                    targetPanelCount = pCount,
+                                    isLocked = true,
                                     customNotes = if (parts.size > 8) parts[8] else "",
                                     isCustom = true
                                 )

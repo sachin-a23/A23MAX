@@ -29,11 +29,13 @@ class A23Repository {
         .readTimeout(15, TimeUnit.SECONDS)
         .build()
 
-    private var cachedPredictions: MutableList<MarketPrediction> = mutableListOf()
-    private val marketHistoryMap: MutableMap<String, List<MarketHistoryEntry>> = mutableMapOf()
-    private val marketSummaryMap: MutableMap<String, MarketHistorySummary> = mutableMapOf()
+    private var cachedPredictions: MutableList<MarketPrediction> = java.util.Collections.synchronizedList(mutableListOf())
+    private val marketHistoryMap = java.util.concurrent.ConcurrentHashMap<String, List<MarketHistoryEntry>>()
+    private val marketSummaryMap = java.util.concurrent.ConcurrentHashMap<String, MarketHistorySummary>()
+    private val rawRecordsMap = java.util.concurrent.ConcurrentHashMap<String, List<RawDayRecord>>()
     private var lastSyncReport: SyncReportData? = null
     private var currentActiveFormula: com.example.model.FormulaConfig = com.example.model.FormulaConfig()
+    private var currentMainMode: com.example.model.MainFormulaMode = com.example.model.MainFormulaMode.MAIN_1
 
     init {
         initializeDefaultData()
@@ -41,10 +43,21 @@ class A23Repository {
 
     fun setActiveFormula(config: com.example.model.FormulaConfig) {
         currentActiveFormula = config
-        recalculatePredictionsWithFormula(config)
+        recalculateAllMarkets()
     }
 
     fun getActiveFormula(): com.example.model.FormulaConfig = currentActiveFormula
+
+    fun setMainFormulaMode(mode: com.example.model.MainFormulaMode): List<MarketPrediction> {
+        currentMainMode = mode
+        return recalculateAllMarkets()
+    }
+
+    fun getMainFormulaMode(): com.example.model.MainFormulaMode = currentMainMode
+
+    fun getFormulaForMarket(marketName: String): com.example.model.FormulaConfig {
+        return FormulaCalculator.getFormulaForMarketAndMode(marketName, currentMainMode, currentActiveFormula)
+    }
 
     fun normalizeMarketKey(rawName: String): String {
         val clean = rawName.trim().uppercase()
@@ -77,33 +90,16 @@ class A23Repository {
         cachedPredictions
     }
 
-    fun recalculatePredictionsWithFormula(config: com.example.model.FormulaConfig): List<MarketPrediction> {
-        val updatedList = mutableListOf<MarketPrediction>()
-        for (prediction in cachedPredictions) {
-            val openPanaInt = prediction.lastOpenPana.toIntOrNull() ?: 159
-            val jodiInt = prediction.lastJodi.toIntOrNull() ?: 56
-            val calc = FormulaCalculator.calculateWithConfig(openPanaInt, jodiInt, config)
-
-            val updated = prediction.copy(
-                otcList = calc.otcDigits,
-                highlightedOtc = null,
-                jodiList = calc.superJodis,
-                panneList = calc.pannes,
-                step1Formula = calc.step1Formula,
-                step1Result = calc.step1Result,
-                step2Formula = calc.step2Formula,
-                step2Result = calc.step2Result,
-                step3Formula = calc.step3Formula,
-                calculatedOtcDigits = calc.otcDigits,
-                superJodiList = calc.superJodis,
-                vipMasterJodis = calc.vipMasterJodis,
-                allCrossJodis = calc.allCrossJodis,
-                dominantGap = calc.dominantGap
-            )
-            updatedList.add(updated)
+    fun recalculateAllMarkets(): List<MarketPrediction> {
+        for (market in rawRecordsMap.keys) {
+            recomputeMarketData(market)
         }
-        cachedPredictions = updatedList
         return cachedPredictions
+    }
+
+    fun recalculatePredictionsWithFormula(config: com.example.model.FormulaConfig): List<MarketPrediction> {
+        currentActiveFormula = config
+        return recalculateAllMarkets()
     }
 
     suspend fun getMarketSummary(marketName: String): MarketHistorySummary = withContext(Dispatchers.IO) {
@@ -125,6 +121,17 @@ class A23Repository {
     fun getMarketHistorySync(marketName: String): List<MarketHistoryEntry> {
         val key = normalizeMarketKey(marketName)
         return marketHistoryMap[key] ?: marketHistoryMap[marketName] ?: marketHistoryMap.values.firstOrNull() ?: emptyList()
+    }
+
+    fun getMarketSummarySync(marketName: String): MarketHistorySummary {
+        val key = normalizeMarketKey(marketName)
+        return marketSummaryMap[key] ?: marketSummaryMap[marketName] ?: marketSummaryMap.values.firstOrNull() ?: MarketHistorySummary(
+            marketName = key,
+            passDays = 140,
+            failDays = 18,
+            holidayDays = 4,
+            totalDays = 162
+        )
     }
 
     fun getPanelChartData(marketName: String): PanelChartMarketData {
@@ -231,25 +238,146 @@ class A23Repository {
         )
     }
 
+    data class RawDayRecord(
+        val date: String,
+        val dayOfWeek: String,
+        val isHoliday: Boolean,
+        val openPana: String?,
+        val jodi: String?,
+        val closePana: String?
+    )
+
     fun getLastSyncReport(): SyncReportData? = lastSyncReport
 
     private fun parseAndStoreMarketRawText(rawMarketName: String, text: String): MarketSyncDetail {
         val marketName = normalizeMarketKey(rawMarketName)
         val lines = text.lines().map { it.trim() }.filter { it.isNotBlank() && !it.startsWith("#") && !it.startsWith("//") }
-        val entriesByDate = linkedMapOf<String, MarketHistoryEntry>()
+        val recordsByDate = linkedMapOf<String, RawDayRecord>()
 
         for ((index, line) in lines.withIndex()) {
-            val entry = parseSingleHistoryLine(marketName, index, line)
-            if (entry != null) {
-                val existing = entriesByDate[entry.date]
-                if (existing == null || (!entry.isHoliday && existing.isHoliday)) {
-                    entriesByDate[entry.date] = entry
+            val record = parseSingleRawLine(marketName, index, line)
+            if (record != null) {
+                val existing = recordsByDate[record.date]
+                if (existing == null || (!record.isHoliday && existing.isHoliday)) {
+                    recordsByDate[record.date] = record
                 }
             }
         }
 
-        // Sort descending by Date (most recent date at the top)
-        val sortedEntries = entriesByDate.values.sortedWith(Comparator { a, b ->
+        rawRecordsMap[marketName] = recordsByDate.values.toList()
+        return recomputeMarketData(marketName)
+    }
+
+    private fun recomputeMarketData(marketName: String): MarketSyncDetail {
+        val rawRecords = rawRecordsMap[marketName] ?: emptyList()
+        if (rawRecords.isEmpty()) {
+            return MarketSyncDetail(
+                marketName = marketName,
+                totalDays = 0,
+                holidayDays = 0,
+                passDays = 0,
+                failDays = 0,
+                latestDate = "",
+                latestResult = "",
+                livePredictionOtc = emptyList()
+            )
+        }
+
+        // Sort ascending by calendar date (chronological order from oldest to newest)
+        val sortedAsc = rawRecords.sortedWith(Comparator { a, b ->
+            val calA = DateUtils.parseDateToCalendar(a.date)
+            val calB = DateUtils.parseDateToCalendar(b.date)
+            when {
+                calA != null && calB != null -> calA.compareTo(calB)
+                calA != null -> 1
+                calB != null -> -1
+                else -> 0
+            }
+        })
+
+        val formula = FormulaCalculator.getFormulaForMarketAndMode(marketName, currentMainMode, currentActiveFormula)
+        val computedEntries = mutableListOf<MarketHistoryEntry>()
+
+        var lastValidOpenPana: Int? = null
+        var lastValidJodi: Int? = null
+
+        for (record in sortedAsc) {
+            val dateStr = record.date
+            val dayOfWeek = record.dayOfWeek
+
+            if (record.isHoliday) {
+                computedEntries.add(
+                    MarketHistoryEntry(
+                        id = "${marketName.lowercase().replace(" ", "_")}_$dateStr",
+                        date = dateStr,
+                        dayOfWeek = dayOfWeek,
+                        otcList = emptyList(),
+                        jodiList = emptyList(),
+                        panneList = emptyList(),
+                        resultPanaOpen = "***",
+                        resultJodi = "**",
+                        resultPanaClose = "***",
+                        isPassed = false,
+                        isFailed = false,
+                        isHoliday = true,
+                        isPending = false,
+                        winningOtcInfo = "Holiday (***)"
+                    )
+                )
+                continue
+            }
+
+            val curOpenPanaInt = record.openPana?.filter { it.isDigit() }?.toIntOrNull()
+            val curJodiInt = record.jodi?.filter { it.isDigit() }?.toIntOrNull()
+            val curClosePanaInt = record.closePana?.filter { it.isDigit() }?.toIntOrNull()
+
+            val seedOpen = lastValidOpenPana ?: curOpenPanaInt ?: 159
+            val seedJodi = lastValidJodi ?: curJodiInt ?: 56
+
+            val calc = FormulaCalculator.calculateWithConfig(seedOpen, seedJodi, formula)
+
+            val openSum = if (curOpenPanaInt != null) (record.openPana?.sumOf { it.digitToIntOrNull() ?: 0 }?.rem(10)) else record.jodi?.getOrNull(0)?.digitToIntOrNull()
+            val closeSum = if (curClosePanaInt != null) (record.closePana?.sumOf { it.digitToIntOrNull() ?: 0 }?.rem(10)) else record.jodi?.getOrNull(1)?.digitToIntOrNull()
+
+            val passInOpen = openSum != null && calc.otcDigits.contains(openSum)
+            val passInClose = closeSum != null && calc.otcDigits.contains(closeSum)
+            val isPassed = passInOpen || passInClose
+            val isFailed = !isPassed
+
+            val winInfo = when {
+                passInOpen && passInClose -> "Open $openSum & Close $closeSum"
+                passInOpen -> "Open $openSum"
+                passInClose -> "Close $closeSum"
+                else -> null
+            }
+
+            computedEntries.add(
+                MarketHistoryEntry(
+                    id = "${marketName.lowercase().replace(" ", "_")}_$dateStr",
+                    date = dateStr,
+                    dayOfWeek = dayOfWeek,
+                    otcList = calc.otcDigits,
+                    jodiList = calc.superJodis,
+                    panneList = calc.pannes,
+                    resultPanaOpen = record.openPana ?: "***",
+                    resultJodi = record.jodi ?: "**",
+                    resultPanaClose = record.closePana ?: "***",
+                    isPassed = isPassed,
+                    isFailed = isFailed,
+                    isHoliday = false,
+                    isPending = false,
+                    winningOtcInfo = winInfo
+                )
+            )
+
+            if (curOpenPanaInt != null && curJodiInt != null) {
+                lastValidOpenPana = curOpenPanaInt
+                lastValidJodi = curJodiInt
+            }
+        }
+
+        // Sort descending for UI (newest date first)
+        val sortedDesc = computedEntries.sortedWith(Comparator { a, b ->
             val calA = DateUtils.parseDateToCalendar(a.date)
             val calB = DateUtils.parseDateToCalendar(b.date)
             when {
@@ -260,12 +388,12 @@ class A23Repository {
             }
         })
 
-        marketHistoryMap[marketName] = sortedEntries
+        marketHistoryMap[marketName] = sortedDesc
 
-        val holidayCount = sortedEntries.count { it.isHoliday }
-        val passCount = sortedEntries.count { it.isPassed }
-        val failCount = sortedEntries.count { it.isFailed }
-        val totalDays = sortedEntries.size
+        val holidayCount = sortedDesc.count { it.isHoliday }
+        val passCount = sortedDesc.count { it.isPassed }
+        val failCount = sortedDesc.count { it.isFailed }
+        val totalDays = sortedDesc.size
 
         val summary = MarketHistorySummary(
             marketName = marketName,
@@ -276,15 +404,15 @@ class A23Repository {
         )
         marketSummaryMap[marketName] = summary
 
-        val latestValid = sortedEntries.firstOrNull { !it.isHoliday && it.resultPanaOpen != null && it.resultPanaOpen != "***" && it.resultJodi != null && it.resultJodi != "**" }
-        val openPanaInt = latestValid?.resultPanaOpen?.toIntOrNull() ?: 289
-        val jodiInt = latestValid?.resultJodi?.toIntOrNull() ?: 90
-        val closePanaInt = latestValid?.resultPanaClose?.toIntOrNull() ?: 569
+        // Compute Live Prediction for HomeScreen (Derived from the latest valid draw)
+        val latestValid = sortedDesc.firstOrNull { !it.isHoliday && it.resultPanaOpen != null && it.resultPanaOpen != "***" && it.resultJodi != null && it.resultJodi != "**" }
+        val liveOpenPanaInt = latestValid?.resultPanaOpen?.toIntOrNull() ?: 159
+        val liveJodiInt = latestValid?.resultJodi?.toIntOrNull() ?: 56
+        val liveClosePanaInt = latestValid?.resultPanaClose?.toIntOrNull() ?: 647
 
-        val calc = FormulaCalculator.calculateWithConfig(openPanaInt, jodiInt, currentActiveFormula)
+        val liveCalc = FormulaCalculator.calculateWithConfig(liveOpenPanaInt, liveJodiInt, formula)
         val todayDate = DateUtils.getTodayLiveDate()
         val lastDate = latestValid?.date ?: DateUtils.getYesterdayDate()
-
         val lastEntryPassed = latestValid?.isPassed ?: true
 
         val prediction = MarketPrediction(
@@ -292,28 +420,28 @@ class A23Repository {
             marketName = marketName,
             date = todayDate,
             lastEntryDate = lastDate,
-            lastOpenPana = openPanaInt.toString(),
-            lastJodi = jodiInt.toString().padStart(2, '0'),
-            lastClosePana = closePanaInt.toString(),
-            openNumber = (openPanaInt.toString().sumOf { it.digitToInt() } % 10).toString(),
-            closeNumber = (closePanaInt.toString().sumOf { it.digitToInt() } % 10).toString(),
+            lastOpenPana = liveOpenPanaInt.toString(),
+            lastJodi = liveJodiInt.toString().padStart(2, '0'),
+            lastClosePana = liveClosePanaInt.toString(),
+            openNumber = (liveOpenPanaInt.toString().sumOf { it.digitToInt() } % 10).toString(),
+            closeNumber = (liveClosePanaInt.toString().sumOf { it.digitToInt() } % 10).toString(),
             isPassed = lastEntryPassed,
             isFailed = !lastEntryPassed,
             isHoliday = false,
-            otcList = calc.otcDigits,
+            otcList = liveCalc.otcDigits,
             highlightedOtc = null,
-            jodiList = calc.superJodis,
-            panneList = calc.pannes,
-            step1Formula = calc.step1Formula,
-            step1Result = calc.step1Result,
-            step2Formula = calc.step2Formula,
-            step2Result = calc.step2Result,
-            step3Formula = calc.step3Formula,
-            calculatedOtcDigits = calc.otcDigits,
-            superJodiList = calc.superJodis,
-            vipMasterJodis = calc.vipMasterJodis,
-            allCrossJodis = calc.allCrossJodis,
-            dominantGap = calc.dominantGap
+            jodiList = liveCalc.superJodis,
+            panneList = liveCalc.pannes,
+            step1Formula = liveCalc.step1Formula,
+            step1Result = liveCalc.step1Result,
+            step2Formula = liveCalc.step2Formula,
+            step2Result = liveCalc.step2Result.toLong(),
+            step3Formula = liveCalc.step3Formula,
+            calculatedOtcDigits = liveCalc.otcDigits,
+            superJodiList = liveCalc.superJodis,
+            vipMasterJodis = liveCalc.vipMasterJodis,
+            allCrossJodis = liveCalc.allCrossJodis,
+            dominantGap = liveCalc.dominantGap
         )
 
         val existingIdx = cachedPredictions.indexOfFirst { it.id == prediction.id }
@@ -331,15 +459,15 @@ class A23Repository {
             failDays = failCount,
             latestDate = lastDate,
             latestResult = "${latestValid?.resultPanaOpen ?: "***"} - ${latestValid?.resultJodi ?: "**"} - ${latestValid?.resultPanaClose ?: "***"}",
-            livePredictionOtc = calc.otcDigits
+            livePredictionOtc = liveCalc.otcDigits
         )
     }
 
-    private fun parseSingleHistoryLine(marketName: String, index: Int, line: String): MarketHistoryEntry? {
+    private fun parseSingleRawLine(marketName: String, index: Int, line: String): RawDayRecord? {
         val cleanLine = line.trim()
         if (cleanLine.isBlank() || cleanLine.startsWith("#") || cleanLine.startsWith("//")) return null
 
-        // Extract Date cleanly from the line (works with dd-mm-yyyy, dd/mm/yyyy, dd.mm.yyyy, yyyy-mm-dd, etc.)
+        // Extract Date cleanly from the line
         val (extractedDate, lineWithoutDate) = DateUtils.extractAndNormalizeDate(cleanLine)
         val dateStr = extractedDate ?: DateUtils.getDateOffset(-index)
         val dayOfWeek = DateUtils.getDayOfWeek(dateStr)
@@ -352,25 +480,16 @@ class A23Repository {
                 lineWithoutDate.contains("off", ignoreCase = true)
 
         if (isHoliday) {
-            return MarketHistoryEntry(
-                id = "${marketName.lowercase().replace(" ", "_")}_$dateStr",
+            return RawDayRecord(
                 date = dateStr,
                 dayOfWeek = dayOfWeek,
-                otcList = emptyList(),
-                jodiList = emptyList(),
-                panneList = emptyList(),
-                resultPanaOpen = "***",
-                resultJodi = "**",
-                resultPanaClose = "***",
-                isPassed = false,
-                isFailed = false,
                 isHoliday = true,
-                isPending = false,
-                winningOtcInfo = "Holiday (***)"
+                openPana = "***",
+                jodi = "**",
+                closePana = "***"
             )
         }
 
-        // Extract numbers from the cleaned line (guaranteed NOT to contain date numbers)
         val numTokens = Regex("""\d+""").findAll(lineWithoutDate).map { it.value }.toList()
         var openPana: String? = null
         var jodi: String? = null
@@ -400,50 +519,13 @@ class A23Repository {
         }
 
         if (openPana != null && jodi != null) {
-            val openPanaInt = openPana.toIntOrNull()
-            val jodiInt = jodi.toIntOrNull()
-            val closePanaInt = closePana?.toIntOrNull()
-
-            val openSum = if (openPanaInt != null) (openPana.sumOf { it.digitToIntOrNull() ?: 0 } % 10) else if (jodi.isNotEmpty() && jodi[0].isDigit()) jodi[0].digitToInt() else null
-            val closeSum = if (closePanaInt != null) (closePana.sumOf { it.digitToIntOrNull() ?: 0 } % 10) else if (jodi.length >= 2 && jodi[1].isDigit()) jodi[1].digitToInt() else null
-
-            val calc = if (openPanaInt != null && jodiInt != null) {
-                FormulaCalculator.calculate(openPanaInt, jodiInt, 9)
-            } else if (openPanaInt != null) {
-                FormulaCalculator.calculate(openPanaInt, 56, 9)
-            } else if (jodiInt != null) {
-                FormulaCalculator.calculate(159, jodiInt, 9)
-            } else {
-                FormulaCalculator.calculate(159, 56, 9)
-            }
-
-            val passInOpen = openSum != null && calc.otcDigits.contains(openSum)
-            val passInClose = closeSum != null && calc.otcDigits.contains(closeSum)
-            val isPassed = passInOpen || passInClose
-            val isFailed = !isPassed
-
-            val winInfo = when {
-                passInOpen && passInClose -> "Open $openSum & Close $closeSum"
-                passInOpen -> "Open $openSum"
-                passInClose -> "Close $closeSum"
-                else -> null
-            }
-
-            return MarketHistoryEntry(
-                id = "${marketName.lowercase().replace(" ", "_")}_$dateStr",
+            return RawDayRecord(
                 date = dateStr,
                 dayOfWeek = dayOfWeek,
-                otcList = calc.otcDigits,
-                jodiList = calc.superJodis,
-                panneList = calc.pannes,
-                resultPanaOpen = openPana,
-                resultJodi = jodi,
-                resultPanaClose = closePana ?: "***",
-                isPassed = isPassed,
-                isFailed = isFailed,
                 isHoliday = false,
-                isPending = false,
-                winningOtcInfo = winInfo
+                openPana = openPana,
+                jodi = jodi,
+                closePana = closePana ?: "***"
             )
         }
 
@@ -658,6 +740,11 @@ class A23Repository {
         return sb.toString()
     }
 
+    suspend fun importRawHistory(marketName: String, rawData: String): Int = withContext(Dispatchers.IO) {
+        val detail = parseAndStoreMarketRawText(normalizeMarketKey(marketName), rawData)
+        detail.totalDays
+    }
+
     suspend fun recalculateMarket(
         marketId: String,
         customOpenPana: Int,
@@ -672,7 +759,7 @@ class A23Repository {
             step1Formula = calc.step1Formula,
             step1Result = calc.step1Result,
             step2Formula = calc.step2Formula,
-            step2Result = calc.step2Result,
+            step2Result = calc.step2Result.toLong(),
             step3Formula = calc.step3Formula,
             calculatedOtcDigits = calc.otcDigits,
             superJodiList = calc.superJodis,
@@ -686,7 +773,7 @@ class A23Repository {
             lastOpenPana = customOpenPana.toString(),
             lastJodi = customJodi.toString(),
             lastClosePana = "647",
-            openNumber = (customOpenPana.toString().sumOf { it.digitToInt() } % 10).toString(),
+            openNumber = (customOpenPana.toString().sumOf { it.digitToIntOrNull() ?: 0 } % 10).toString(),
             closeNumber = "7",
             isPassed = true,
             otcList = calc.otcDigits,
@@ -696,7 +783,7 @@ class A23Repository {
             step1Formula = calc.step1Formula,
             step1Result = calc.step1Result,
             step2Formula = calc.step2Formula,
-            step2Result = calc.step2Result,
+            step2Result = calc.step2Result.toLong(),
             step3Formula = calc.step3Formula,
             calculatedOtcDigits = calc.otcDigits,
             superJodiList = calc.superJodis
@@ -791,5 +878,59 @@ class A23Repository {
             holidayDays = holidayCount,
             totalDays = totalDays
         )
+    }
+
+    fun bulkImportCanonicalRecords(recordsMap: Map<String, List<com.example.model.CanonicalMarketRecord>>) {
+        for ((marketKey, canonicalList) in recordsMap) {
+            val normKey = normalizeMarketKey(marketKey)
+            val existingRaws = (rawRecordsMap[normKey] ?: emptyList()).associateBy { it.date }.toMutableMap()
+            for (rec in canonicalList) {
+                val dayOfWeek = DateUtils.getDayOfWeek(rec.date)
+                existingRaws[rec.date] = RawDayRecord(
+                    date = rec.date,
+                    dayOfWeek = dayOfWeek,
+                    isHoliday = rec.isHoliday,
+                    openPana = if (rec.isHoliday) "***" else rec.openPana,
+                    jodi = if (rec.isHoliday) "**" else rec.jodi,
+                    closePana = if (rec.isHoliday) "***" else rec.closePana
+                )
+            }
+            rawRecordsMap[normKey] = existingRaws.values.toList()
+            recomputeMarketData(normKey)
+        }
+    }
+
+    fun appendSingleHistoryEntry(marketName: String, lineText: String) {
+        val key = normalizeMarketKey(marketName)
+        val raw = parseSingleRawLine(key, 0, lineText) ?: return
+        val existingRaws = (rawRecordsMap[key] ?: emptyList()).toMutableList()
+        val index = existingRaws.indexOfFirst { it.date == raw.date }
+        if (index >= 0) {
+            existingRaws[index] = raw
+        } else {
+            existingRaws.add(0, raw)
+        }
+        rawRecordsMap[key] = existingRaws
+        recomputeMarketData(key)
+    }
+
+    fun registerNewMarket(marketName: String, initialData: String? = null): MarketSyncDetail {
+        val key = normalizeMarketKey(marketName)
+        val raw = if (!initialData.isNullOrBlank()) {
+            initialData
+        } else {
+            val today = SimpleDateFormat("dd-MM-yyyy", Locale.ENGLISH).format(Date())
+            "$today  159 - 56 - 647"
+        }
+        return parseAndStoreMarketRawText(key, raw)
+    }
+
+    fun getAllMarketNames(): List<String> {
+        return marketHistoryMap.keys.toList().ifEmpty {
+            listOf(
+                "KALYAN", "KALYAN NIGHT", "MAIN BAZAR", "MILAN DAY", "MILAN NIGHT",
+                "RAJDHANI DAY", "RAJDHANI NIGHT", "SRIDEVI", "SRIDEVI NIGHT", "TIME BAZAR"
+            )
+        }
     }
 }

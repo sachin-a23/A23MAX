@@ -72,3 +72,29 @@ data class AiBacktestReport(
     val aiInsightSummary: String,
     val timestamp: String
 )
+
+data class FormulaMarketRanking(
+    val formula: FormulaConfig,
+    val summary: BacktestSummary
+)
+
+enum class AiChatSender {
+    USER,
+    AI_ASSISTANT,
+    SYSTEM
+}
+
+data class AiChatMessage(
+    val id: String = "msg_${System.currentTimeMillis()}_${(100..999).random()}",
+    val sender: AiChatSender,
+    val content: String,
+    val timestamp: Long = System.currentTimeMillis(),
+    val timestampFormatted: String = java.text.SimpleDateFormat("hh:mm a", java.util.Locale.ENGLISH).format(java.util.Date()),
+    val suggestedFormula: AiGeneratedFormula? = null,
+    val suggestedOtc: List<Int> = emptyList(),
+    val suggestedJodis: List<String> = emptyList(),
+    val suggestedPanas: List<String> = emptyList(),
+    val formulaInsight: String? = null,
+    val isVerifiedTrueReport: Boolean = false,
+    val isInsightCard: Boolean = false
+)

@@ -43,7 +43,7 @@ class GreetingScreenshotTest {
         step1Formula = calc.step1Formula,
         step1Result = calc.step1Result,
         step2Formula = calc.step2Formula,
-        step2Result = calc.step2Result,
+        step2Result = calc.step2Result.toLong(),
         step3Formula = calc.step3Formula,
         calculatedOtcDigits = calc.otcDigits,
         superJodiList = calc.superJodis

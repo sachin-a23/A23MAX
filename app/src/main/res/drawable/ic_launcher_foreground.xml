@@ -6,59 +6,81 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Hexagon Crest Shield -->
+    <!-- 3D Beveled Gold Shield Body -->
     <path
-        android:pathData="M54,20 L84,36 L84,72 L54,88 L24,72 L24,36 Z"
-        android:strokeWidth="3.2"
+        android:pathData="M54,18 L86,34 L86,68 L54,90 L22,68 L22,34 Z"
+        android:strokeWidth="3.5"
         android:strokeColor="#F59E0B">
         <aapt:attr name="android:fillColor">
             <gradient
-                android:startX="24"
-                android:startY="20"
-                android:endX="84"
-                android:endY="88"
+                android:startX="22"
+                android:startY="18"
+                android:endX="86"
+                android:endY="90"
                 android:type="linear">
-                <item android:offset="0.0" android:color="#40F59E0B" />
-                <item android:offset="1.0" android:color="#4006B6D4" />
+                <item android:offset="0.0" android:color="#F01E293B" />
+                <item android:offset="0.4" android:color="#E60F172A" />
+                <item android:offset="1.0" android:color="#F5020617" />
             </gradient>
         </aapt:attr>
     </path>
 
-    <!-- Inner Neon Cyan Border -->
+    <!-- Glowing Cyan Inner Hexagon Matrix -->
     <path
-        android:pathData="M54,26 L78,39 L78,69 L54,82 L30,69 L30,39 Z"
-        android:strokeWidth="1.6"
+        android:pathData="M54,23 L80,37 L80,64 L54,82 L28,64 L28,37 Z"
+        android:strokeWidth="1.8"
         android:strokeColor="#06B6D4"
         android:fillColor="#00000000" />
 
-    <!-- Crown Points -->
+    <!-- Royal Crown Triple Peak (Gold) -->
     <path
-        android:pathData="M44,35 L50,41 L54,30 L58,41 L64,35 L62,47 L46,47 Z"
-        android:fillColor="#FBBF24" />
-
-    <!-- Stylized Letter 'A' -->
-    <path
-        android:pathData="M54,44 L44,69 L49,69 L51.5,62 L56.5,62 L59,69 L64,69 Z M54,52 L55.5,58 L52.5,58 Z"
-        android:fillColor="#FFFFFF" />
-
-    <!-- '23' Gold/Cyan Bar -->
-    <path
-        android:pathData="M38,71 L70,71 L67,77 L41,77 Z">
+        android:pathData="M40,32 L47,38 L54,26 L61,38 L68,32 L65,42 L43,42 Z">
         <aapt:attr name="android:fillColor">
             <gradient
-                android:startX="38"
-                android:startY="71"
-                android:endX="70"
-                android:endY="77"
+                android:startX="40"
+                android:startY="26"
+                android:endX="68"
+                android:endY="42"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FDE047" />
+                <item android:offset="0.5" android:color="#F59E0B" />
+                <item android:offset="1.0" android:color="#D97706" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Bold Stylized 3D Letter 'A' (White & Platinum) -->
+    <path
+        android:pathData="M44,45 L36,66 L42,66 L44,60 L52,60 L54,66 L60,66 L52,45 Z M48,51 L50.5,56 L45.5,56 Z"
+        android:fillColor="#FFFFFF" />
+
+    <!-- 3D '23' Tech Monogram Accent Badge -->
+    <path
+        android:pathData="M61,46 L73,46 L66,54 L73,54 L73,57 L61,57 L67,49 L61,49 Z"
+        android:fillColor="#FBBF24" />
+    <path
+        android:pathData="M61,58 L73,58 L68,62 L73,62 L73,66 L61,66 L61,63 L68,63 L65,60 L61,60 Z"
+        android:fillColor="#38BDF8" />
+
+    <!-- Horizontal Gold/Cyan Laser Divider -->
+    <path
+        android:pathData="M32,69 L76,69 L72,73 L36,73 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="32"
+                android:startY="69"
+                android:endX="76"
+                android:endY="73"
                 android:type="linear">
                 <item android:offset="0.0" android:color="#F59E0B" />
+                <item android:offset="0.5" android:color="#FDE047" />
                 <item android:offset="1.0" android:color="#06B6D4" />
             </gradient>
         </aapt:attr>
     </path>
 
-    <!-- Sparkle Star -->
+    <!-- Diamond VIP Sparkle Star (Bottom) -->
     <path
-        android:pathData="M54,79 L55.5,82 L59,82.5 L56.5,84.5 L57.2,88 L54,86 L50.8,88 L51.5,84.5 L49,82.5 L52.5,82 Z"
-        android:fillColor="#FBBF24" />
+        android:pathData="M54,76 L56,80 L60,80.5 L57,83 L58,87 L54,84.5 L50,87 L51,83 L48,80.5 L52,80 Z"
+        android:fillColor="#FDE047" />
 </vector>

@@ -66,6 +66,16 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.filled.Assessment
+import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Verified
+import androidx.compose.material.icons.filled.Warning
+import com.example.model.AiChatMessage
+import com.example.model.AiChatSender
 import com.example.model.AiBacktestReport
 import com.example.model.AiEngineSettings
 import com.example.model.AiGeneratedFormula
@@ -92,11 +102,17 @@ fun AiEngineControlDeck(
     onGenerateAiFormula: (marketName: String, prompt: String) -> Unit,
     onRunAutomatedAiBacktest: (marketName: String) -> Unit,
     onApplyAiFormula: (AiGeneratedFormula) -> Unit,
+    aiChatHistory: List<AiChatMessage> = emptyList(),
+    isAiChatLoading: Boolean = false,
+    onSendChatMessage: (String) -> Unit = {},
+    onClearChatHistory: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     var showApiSettingsDialog by remember { mutableStateOf(false) }
     var customUserPrompt by remember { mutableStateOf("") }
+    var chatInputText by remember { mutableStateOf("") }
+    var isChatSectionExpanded by remember { mutableStateOf(true) }
 
     Surface(
         modifier = modifier
@@ -459,6 +475,305 @@ fun AiEngineControlDeck(
                                 text = aiBacktestReport.aiInsightSummary,
                                 color = Color.LightGray,
                                 fontSize = 10.5.sp
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            HorizontalDivider(color = Color(0x338B5CF6))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // =========================================================================
+            // AI CHAT & HONEST TRUTH REPORT ASSISTANT (UPGRADED)
+            // =========================================================================
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Chat,
+                        contentDescription = null,
+                        tint = NeonCyanBright,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "AI Strategy Chat & Sachai Assistant",
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (aiChatHistory.isNotEmpty()) {
+                        IconButton(
+                            onClick = onClearChatHistory,
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.DeleteOutline,
+                                contentDescription = "Clear Chat",
+                                tint = Color.Gray,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                    IconButton(
+                        onClick = { isChatSectionExpanded = !isChatSectionExpanded },
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isChatSectionExpanded) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                            contentDescription = "Toggle Chat",
+                            tint = NeonCyanBright,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+
+            Text(
+                text = "Chat directly with AI about live predictions, self-learning pattern trends, and 100% honest pass/fail audit reports.",
+                color = Color.LightGray,
+                fontSize = 11.sp,
+                modifier = Modifier.padding(top = 2.dp, bottom = 8.dp)
+            )
+
+            AnimatedVisibility(visible = isChatSectionExpanded) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    // Quick Chat Prompt Chips
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf(
+                            "📊 Real Truth & Sachai Report" to "App me sabhi formulas ki sachai aur all days pass/fail report batao",
+                            "🔥 Live Prediction Today" to "Today live prediction with 4-OTC and Super Jodis for $marketName",
+                            "🧠 Self-Learning Pattern" to "Analyze recent market chart patterns and recurring digit harmonic cycles",
+                            "🎯 4-OTC Jodi Accuracy" to "Which formula has highest win streak on $marketName?"
+                        ).forEach { (chipLabel, promptQuery) ->
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = Color(0x221E293B),
+                                border = BorderStroke(1.dp, Color(0x4464748B)),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        onSendChatMessage(promptQuery)
+                                    }
+                            ) {
+                                Text(
+                                    text = chipLabel,
+                                    color = NeonCyanBright,
+                                    fontSize = 10.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Chat Messages Container
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0x33000000),
+                        border = BorderStroke(1.dp, Color(0x22FFFFFF)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            if (aiChatHistory.isEmpty()) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Lightbulb,
+                                        contentDescription = null,
+                                        tint = NeonGoldBright,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Type any question below or tap a quick chip above to get live market intelligence!",
+                                        color = Color.Gray,
+                                        fontSize = 11.sp
+                                    )
+                                }
+                            } else {
+                                aiChatHistory.takeLast(6).forEach { chatMsg ->
+                                    val isUser = chatMsg.sender == AiChatSender.USER
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalAlignment = if (isUser) Alignment.End else Alignment.Start
+                                    ) {
+                                        Surface(
+                                            shape = RoundedCornerShape(
+                                                topStart = 12.dp,
+                                                topEnd = 12.dp,
+                                                bottomStart = if (isUser) 12.dp else 2.dp,
+                                                bottomEnd = if (isUser) 2.dp else 12.dp
+                                            ),
+                                            color = if (isUser) Color(0x338B5CF6) else Color(0x2B06B6D4),
+                                            border = BorderStroke(
+                                                1.dp,
+                                                if (isUser) NeonPurpleBright.copy(alpha = 0.5f) else NeonCyanBright.copy(alpha = 0.4f)
+                                            ),
+                                            modifier = Modifier.fillMaxWidth(0.92f)
+                                        ) {
+                                            Column(modifier = Modifier.padding(10.dp)) {
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = if (isUser) Icons.Default.Speed else Icons.Default.Psychology,
+                                                        contentDescription = null,
+                                                        tint = if (isUser) NeonPurpleBright else NeonCyanBright,
+                                                        modifier = Modifier.size(14.dp)
+                                                    )
+                                                    Text(
+                                                        text = if (isUser) "You" else "A23 Neural AI (Live)",
+                                                        color = if (isUser) NeonPurpleBright else NeonCyanBright,
+                                                        fontSize = 10.5.sp,
+                                                        fontWeight = FontWeight.Black
+                                                    )
+                                                    if (!isUser && chatMsg.isVerifiedTrueReport) {
+                                                        Surface(
+                                                            shape = RoundedCornerShape(4.dp),
+                                                            color = Color(0x3310B981)
+                                                        ) {
+                                                            Text(
+                                                                text = "100% SACHAI VERIFIED",
+                                                                color = NeonGreen,
+                                                                fontSize = 8.5.sp,
+                                                                fontWeight = FontWeight.Bold,
+                                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                            )
+                                                        }
+                                                    }
+                                                }
+
+                                                Spacer(modifier = Modifier.height(4.dp))
+
+                                                Text(
+                                                    text = chatMsg.content,
+                                                    color = Color.White,
+                                                    fontSize = 11.5.sp,
+                                                    lineHeight = 16.sp
+                                                )
+
+                                                if (chatMsg.suggestedOtc.isNotEmpty()) {
+                                                    Spacer(modifier = Modifier.height(6.dp))
+                                                    Surface(
+                                                        shape = RoundedCornerShape(6.dp),
+                                                        color = Color(0x22000000),
+                                                        border = BorderStroke(0.8.dp, NeonGreen)
+                                                    ) {
+                                                        Row(
+                                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                                            verticalAlignment = Alignment.CenterVertically
+                                                        ) {
+                                                            Text("Suggested 4-OTC: ", color = Color.LightGray, fontSize = 10.sp)
+                                                            Text(
+                                                                text = chatMsg.suggestedOtc.joinToString(" - "),
+                                                                color = NeonGreen,
+                                                                fontSize = 12.sp,
+                                                                fontWeight = FontWeight.Black
+                                                            )
+                                                        }
+                                                    }
+                                                }
+
+                                                if (chatMsg.suggestedJodis.isNotEmpty()) {
+                                                    Spacer(modifier = Modifier.height(3.dp))
+                                                    Text(
+                                                        text = "Jodis: ${chatMsg.suggestedJodis.take(6).joinToString(", ")}",
+                                                        color = NeonGoldBright,
+                                                        fontSize = 10.5.sp,
+                                                        fontWeight = FontWeight.Bold
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (isAiChatLoading) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    CircularProgressIndicator(
+                                        color = NeonCyanBright,
+                                        modifier = Modifier.size(16.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                    Text(
+                                        text = "AI is computing real market statistics & honest truth report...",
+                                        color = NeonCyanBright,
+                                        fontSize = 11.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Chat Input Box & Send Button
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = chatInputText,
+                            onValueChange = { chatInputText = it },
+                            placeholder = { Text("Ask AI anything about formulas, patterns, or pass/fail...", fontSize = 11.5.sp) },
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = NeonCyanBright,
+                                unfocusedBorderColor = Color(0x44FFFFFF),
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            ),
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        Button(
+                            onClick = {
+                                if (chatInputText.isNotBlank()) {
+                                    onSendChatMessage(chatInputText)
+                                    chatInputText = ""
+                                }
+                            },
+                            enabled = chatInputText.isNotBlank() && !isAiChatLoading,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = NeonCyanBright, contentColor = Color.Black),
+                            modifier = Modifier.size(height = 50.dp, width = 52.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Send,
+                                contentDescription = "Send",
+                                modifier = Modifier.size(18.dp)
                             )
                         }
                     }

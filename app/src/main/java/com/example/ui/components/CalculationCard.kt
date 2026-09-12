@@ -27,6 +27,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,6 +38,18 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CurrencyRupee
+import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.platform.LocalContext
+import com.example.engine.MarketTimingEngine
+import com.example.model.DrawSession
 import com.example.model.MarketPrediction
 import com.example.ui.theme.NeonCyan
 import com.example.ui.theme.NeonCyanBright
@@ -45,16 +58,26 @@ import com.example.ui.theme.NeonGoldBright
 import com.example.ui.theme.NeonGreen
 import com.example.ui.theme.NeonRed
 import com.example.util.DateUtils
+import com.example.util.SocialShareHelper
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun CalculationCard(
     prediction: MarketPrediction,
     modifier: Modifier = Modifier,
-    accentColor: Color = NeonGoldBright
+    accentColor: Color = NeonGoldBright,
+    onAutoDeduce: ((MarketPrediction) -> Unit)? = null,
+    onPassMoneyTrack: ((DrawSession) -> Unit)? = null,
+    onFailMoneyTrack: (() -> Unit)? = null,
+    onOpenShareExport: ((MarketPrediction) -> Unit)? = null
 ) {
+    val context = LocalContext.current
     val liveDate = if (prediction.date.isNotBlank()) prediction.date else DateUtils.getTodayLiveDate()
     val headerTitle = "$liveDate - ${prediction.marketName}"
+
+    val timing = remember(prediction.marketName) {
+        MarketTimingEngine.getCountdown(prediction.marketName)
+    }
 
     val pulseTransition = rememberInfiniteTransition(label = "pulse_trans")
     val pulseAlpha by pulseTransition.animateFloat(
@@ -84,7 +107,7 @@ fun CalculationCard(
                 .padding(14.dp)
         ) {
             // -------------------------------------------------------------
-            // 1. FAST LIVE DATE - MARKET NAME & (LIVE FORECAST BADGE)
+            // 1. FAST LIVE DATE - MARKET NAME & (LIVE FORECAST + SHARE)
             // -------------------------------------------------------------
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -106,43 +129,115 @@ fun CalculationCard(
                     Text(
                         text = headerTitle,
                         color = NeonGreen,
-                        fontSize = 18.sp,
+                        fontSize = 17.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 0.5.sp
                     )
                 }
 
-                // Top Live Forecast Badge (Fixing premature "Pass" display on today's live prediction)
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = Color(0x3306B6D4),
-                    border = androidx.compose.foundation.BorderStroke(
-                        1.dp,
-                        NeonCyan
-                    )
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // WhatsApp / Telegram Share Button
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0x3322C55E),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x8022C55E)),
+                        modifier = Modifier.clickable {
+                            if (onOpenShareExport != null) {
+                                onOpenShareExport(prediction)
+                            } else {
+                                SocialShareHelper.sharePrediction(context, prediction)
+                            }
+                        }
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .clip(CircleShape)
-                                .background(NeonCyanBright)
+                        Row(
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = "Share",
+                                tint = NeonGreen,
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Share",
+                                color = NeonGreen,
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    // Top Live Forecast Badge
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0x3306B6D4),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            NeonCyan
                         )
-                        Spacer(modifier = Modifier.width(5.dp))
-                        Text(
-                            text = "Live Forecast ⚡",
-                            color = NeonCyanBright,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Black
-                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(5.dp)
+                                    .clip(CircleShape)
+                                    .background(NeonCyanBright)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Live ⚡",
+                                color = NeonCyanBright,
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.Black
+                            )
+                        }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            // Market Timing & Draw Countdown Chip
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0x221E293B))
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Timer,
+                        contentDescription = "Draw Time",
+                        tint = Color(0xFFFBBF24),
+                        modifier = Modifier.size(13.dp)
+                    )
+                    Spacer(modifier = Modifier.width(5.dp))
+                    Text(
+                        text = "Open: ${timing.schedule.openTimeStr} | Close: ${timing.schedule.closeTimeStr}",
+                        color = Color(0xFFE2E8F0),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                Text(
+                    text = "${timing.nextEventLabel}: ${timing.formattedRemaining}",
+                    color = Color(0xFF38BDF8),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
 
             // -------------------------------------------------------------
             // 2. OTC SECTION
@@ -156,18 +251,18 @@ fun CalculationCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Otc :",
+                    text = "Otc (${prediction.otcList.size}D) :",
                     color = NeonCyan,
-                    fontSize = 14.sp,
+                    fontSize = 13.5.sp,
                     fontWeight = FontWeight.Black,
-                    modifier = Modifier.width(62.dp)
+                    modifier = Modifier.width(72.dp)
                 )
 
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    prediction.otcList.take(4).forEach { digit ->
+                    prediction.otcList.forEach { digit ->
                         Box(
                             modifier = Modifier
                                 .size(36.dp)
@@ -195,8 +290,9 @@ fun CalculationCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             // -------------------------------------------------------------
-            // 3. JODI SECTION (Top 4 VIP Master + 16 OTC Cross)
+            // 3. JODI SECTION (VIP Master + Optional Cross Matrix)
             // -------------------------------------------------------------
+            val displayJodis = if (prediction.vipMasterJodis.isNotEmpty()) prediction.vipMasterJodis else (if (prediction.jodiList.isNotEmpty()) prediction.jodiList else prediction.superJodiList)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -210,21 +306,23 @@ fun CalculationCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
                         Text(
-                            text = "Jodi :",
+                            text = "Jodi (${displayJodis.size}) :",
                             color = NeonGoldBright,
-                            fontSize = 14.sp,
+                            fontSize = 13.5.sp,
                             fontWeight = FontWeight.Black,
-                            modifier = Modifier.width(62.dp)
+                            modifier = Modifier.width(72.dp)
                         )
 
-                        // Top VIP Master 4 Jodis (Weekly 1 Jodi Pass Target)
+                        // Top VIP Master Jodis (4, 6, 8)
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            val displayJodis = (if (prediction.vipMasterJodis.isNotEmpty()) prediction.vipMasterJodis else (if (prediction.jodiList.isNotEmpty()) prediction.jodiList else prediction.superJodiList)).take(4)
                             displayJodis.forEach { jodi ->
                                 Surface(
                                     shape = RoundedCornerShape(6.dp),
@@ -244,7 +342,7 @@ fun CalculationCard(
                         }
                     }
 
-                    // 16 Cross Jodis Toggle Button
+                    // Cross Jodis Toggle Button
                     if (prediction.allCrossJodis.isNotEmpty() || prediction.otcList.size >= 3) {
                         Surface(
                             shape = RoundedCornerShape(6.dp),
@@ -253,7 +351,7 @@ fun CalculationCard(
                             modifier = Modifier.clickable { showAllCrossJodis = !showAllCrossJodis }
                         ) {
                             Text(
-                                text = if (showAllCrossJodis) "Hide 16" else "16 Cross",
+                                text = if (showAllCrossJodis) "Hide Cross" else "Cross",
                                 color = if (showAllCrossJodis) NeonCyanBright else Color.LightGray,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
@@ -263,7 +361,7 @@ fun CalculationCard(
                     }
                 }
 
-                // Expanded 16 OTC Cross Matrix
+                // Expanded OTC Cross Matrix
                 if (showAllCrossJodis) {
                     Spacer(modifier = Modifier.height(6.dp))
                     val crossList = if (prediction.allCrossJodis.isNotEmpty()) prediction.allCrossJodis else {
@@ -276,7 +374,7 @@ fun CalculationCard(
                         cross
                     }
                     Text(
-                        text = "16 OTC Direct Cross Combinations:",
+                        text = "OTC Cross Matrix Combinations (${crossList.size} Pairs):",
                         color = Color.LightGray,
                         fontSize = 10.5.sp,
                         fontWeight = FontWeight.SemiBold
@@ -310,7 +408,7 @@ fun CalculationCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             // -------------------------------------------------------------
-            // 4. PANNE SECTION (Official Panel Chart Mappings)
+            // 4. PANNE SECTION (Official Panel Chart Mappings 4, 6, 8)
             // -------------------------------------------------------------
             Row(
                 modifier = Modifier
@@ -322,11 +420,11 @@ fun CalculationCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Panne :",
+                    text = "Panne (${prediction.panneList.size}) :",
                     color = Color(0xFFC084FC),
-                    fontSize = 14.sp,
+                    fontSize = 13.5.sp,
                     fontWeight = FontWeight.Black,
-                    modifier = Modifier.width(62.dp)
+                    modifier = Modifier.width(72.dp)
                 )
 
                 FlowRow(
@@ -334,7 +432,7 @@ fun CalculationCard(
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                     modifier = Modifier.weight(1f)
                 ) {
-                    prediction.panneList.take(4).forEach { pana ->
+                    prediction.panneList.forEach { pana ->
                         Surface(
                             shape = RoundedCornerShape(6.dp),
                             color = Color(0x33A855F7),
@@ -408,6 +506,8 @@ fun CalculationCard(
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(6.dp))
         }
     }
 }

@@ -1,21 +1,40 @@
 {
   "project_info": {
-    "project_number": "912335373079",
-    "project_id": "a23max-ecbe3",
-    "storage_bucket": "a23max-ecbe3.firebasestorage.app"
+    "project_number": "927569125887",
+    "project_id": "market-d7",
+    "storage_bucket": "market-d7.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:912335373079:android:13532e98ba4c98136aad52",
+        "mobilesdk_app_id": "1:927569125887:android:424e61d82fbdff8a84c7ca",
         "android_client_info": {
-          "package_name": "com.aistudio.a23max.kalyan"
+          "package_name": "com.android02.a23max"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyB4fYIoc-WrcB4KibQCYt8yqW47kiEQuGs"
+          "current_key": "AIzaSyBgpZWtk8Jy4cYgxHr4sfyEZruRVmUFhZE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:927569125887:android:84310ed56ab5a0ed84c7ca",
+        "android_client_info": {
+          "package_name": "com.android02.gsm"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBgpZWtk8Jy4cYgxHr4sfyEZruRVmUFhZE"
         }
       ],
       "services": {

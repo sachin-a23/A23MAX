@@ -26,8 +26,10 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CurrencyRupee
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EventBusy
+import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.ListAlt
 import androidx.compose.material3.AlertDialog
@@ -62,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.model.MarketHistoryEntry
 import com.example.model.MarketHistorySummary
+import com.example.model.MarketPrediction
 import com.example.ui.components.GlassCard
 import com.example.ui.theme.NeonCyan
 import com.example.ui.theme.NeonCyanBright
@@ -70,6 +73,7 @@ import com.example.ui.theme.NeonGoldBright
 import com.example.ui.theme.NeonGreen
 import com.example.ui.theme.NeonGreenBright
 import com.example.ui.theme.NeonRed
+import com.example.util.DateUtils
 
 @Composable
 fun HistoryScreen(
@@ -77,9 +81,13 @@ fun HistoryScreen(
     summary: MarketHistorySummary,
     historyEntries: List<MarketHistoryEntry>,
     availableMarkets: List<String>,
+    livePrediction: MarketPrediction? = null,
     onSelectMarket: (String) -> Unit,
     onUpdateResult: (marketName: String, date: String, openPana: String, jodi: String, closePana: String, isPassed: Boolean) -> Unit,
     onOpenPanelChart: (String) -> Unit = {},
+    onExportPdf: (String) -> Unit = {},
+    onRefresh: () -> Unit = {},
+    onAutoDeduceMoneyTrack: ((String, MarketHistoryEntry) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     var isMarketMenuExpanded by remember { mutableStateOf(false) }
@@ -110,12 +118,28 @@ fun HistoryScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "History All Day",
-                        color = Color.White,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "History All Day",
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = Color(0x33F59E0B),
+                            modifier = Modifier.clickable { onRefresh() }
+                        ) {
+                            Text(
+                                text = "🔄 Refresh",
+                                color = NeonGoldBright,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
 
                     // Market Dropdown Button
                     Box {
@@ -171,111 +195,181 @@ fun HistoryScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Pass / Fail / Holiday / Total Stats Row
+                // Pass / Fail / Holiday / Total Stats 2x2 Grid
                 Text(
-                    text = "Pass fell days summary",
+                    text = "Pass / Fell Days Summary",
                     color = Color.LightGray,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold
                 )
                 Spacer(modifier = Modifier.height(6.dp))
 
-                Row(
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    // Pass Box: ✅ [ 215 ]
-                    Surface(
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(10.dp),
-                        color = Color(0x2222C55E),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, NeonGreen)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Column(
-                            modifier = Modifier.padding(vertical = 8.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                        // Pass Box: ✅ [ 215 ]
+                        Surface(
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color(0x2222C55E),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, NeonGreen)
                         ) {
-                            Text(text = "✅ Pass", color = NeonGreen, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            Text(text = "[ ${summary.passDays} ]", color = NeonGreenBright, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                            Column(
+                                modifier = Modifier.padding(vertical = 8.dp, horizontal = 10.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(text = "✅ Pass Days", color = NeonGreen, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text(text = "[ ${summary.passDays} ]", color = NeonGreenBright, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                            }
+                        }
+
+                        // Fail Box: ❌ [ 110 ]
+                        Surface(
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color(0x22EF4444),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, NeonRed)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(vertical = 8.dp, horizontal = 10.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(text = "❌ Fell Days", color = NeonRed, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text(text = "[ ${summary.failDays} ]", color = Color(0xFFFCA5A5), fontSize = 14.sp, fontWeight = FontWeight.Black)
+                            }
                         }
                     }
 
-                    // Fail Box: ❌ [ 110 ]
-                    Surface(
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(10.dp),
-                        color = Color(0x22EF4444),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, NeonRed)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Column(
-                            modifier = Modifier.padding(vertical = 8.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                        // Holiday Box: Holiday [ 24 ]
+                        Surface(
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color(0x2238BDF8),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, NeonCyan)
                         ) {
-                            Text(text = "❌ Fell", color = NeonRed, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            Text(text = "[ ${summary.failDays} ]", color = Color(0xFFFCA5A5), fontSize = 14.sp, fontWeight = FontWeight.Black)
+                            Column(
+                                modifier = Modifier.padding(vertical = 8.dp, horizontal = 10.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(text = "Holiday Days", color = NeonCyan, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text(text = "[ ${summary.holidayDays} ]", color = NeonCyanBright, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                            }
                         }
-                    }
 
-                    // Holiday Box: Holiday [ 24 ]
-                    Surface(
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(10.dp),
-                        color = Color(0x2238BDF8),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, NeonCyan)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(vertical = 8.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                        // Total Box: Total days ( 349 )
+                        Surface(
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color(0x22F59E0B),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, NeonGold)
                         ) {
-                            Text(text = "Holiday", color = NeonCyan, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            Text(text = "[ ${summary.holidayDays} ]", color = NeonCyanBright, fontSize = 14.sp, fontWeight = FontWeight.Black)
-                        }
-                    }
-
-                    // Total Box: Total days ( 349 )
-                    Surface(
-                        modifier = Modifier.weight(1.1f),
-                        shape = RoundedCornerShape(10.dp),
-                        color = Color(0x22F59E0B),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, NeonGold)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(vertical = 8.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(text = "Total Days", color = NeonGold, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            Text(text = "( ${summary.totalDays} )", color = NeonGoldBright, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                            Column(
+                                modifier = Modifier.padding(vertical = 8.dp, horizontal = 10.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(text = "Total Records", color = NeonGold, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text(text = "( ${summary.totalDays} Days )", color = NeonGoldBright, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                            }
                         }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // Panel Chart Navigation Action
-                Button(
-                    onClick = { onOpenPanelChart(selectedMarket) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("open_panel_chart_history_button"),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF1E293B),
-                        contentColor = NeonGoldBright
-                    ),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF475569))
+                // Action Buttons Row (PDF Report & Panel Chart & Money Track Auto Deduce)
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.ListAlt,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = NeonGoldBright
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "📊 View Full $selectedMarket Panel Chart (Weekly Grid)",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp
-                    )
+                    // Quick Money Track Auto Deduction Button
+                    Button(
+                        onClick = {
+                            val latestNonHoliday = historyEntries.firstOrNull { !it.isHoliday && !it.isPending }
+                            if (latestNonHoliday != null) {
+                                onAutoDeduceMoneyTrack?.invoke(selectedMarket, latestNonHoliday)
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("money_track_auto_deduce_history_button"),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0x33F59E0B),
+                            contentColor = NeonGoldBright
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(1.2.dp, Color(0xFFF59E0B))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FlashOn,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = NeonGoldBright
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "⚡ Auto-Deduce Latest Result in Money Track",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = NeonGoldBright
+                        )
+                    }
+
+                    // Digital PDF Download Button
+                    Button(
+                        onClick = { onExportPdf(selectedMarket) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("download_history_pdf_button"),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0x3310B981),
+                            contentColor = NeonGreenBright
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(1.5.dp, Color(0xFF10B981))
+                    ) {
+                        Text(
+                            text = "📥 Download All Pass/Fell Report (Digital PDF)",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = NeonGreenBright
+                        )
+                    }
+
+                    // Panel Chart Navigation Action
+                    Button(
+                        onClick = { onOpenPanelChart(selectedMarket) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("open_panel_chart_history_button"),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF1E293B),
+                            contentColor = NeonGoldBright
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF475569))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ListAlt,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = NeonGoldBright
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "📊 View Full $selectedMarket Panel Chart (Weekly Grid)",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
+                    }
                 }
             }
         }
@@ -283,13 +377,36 @@ fun HistoryScreen(
         // History Entries List
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 90.dp),
+            contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 48.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // Live Today Prediction Card (Result Pending)
+            if (livePrediction != null) {
+                item(key = "live_today_prediction_${livePrediction.marketName}_${livePrediction.date}") {
+                    LivePredictionCard(
+                        prediction = livePrediction,
+                        onUpdateClick = {
+                            updatingEntry = MarketHistoryEntry(
+                                id = "live_${livePrediction.id}",
+                                date = livePrediction.date,
+                                dayOfWeek = DateUtils.getDayOfWeek(livePrediction.date),
+                                otcList = livePrediction.otcList,
+                                jodiList = livePrediction.jodiList,
+                                panneList = livePrediction.panneList,
+                                isPending = true
+                            )
+                        }
+                    )
+                }
+            }
+
             items(historyEntries, key = { it.id }) { item ->
                 HistoryEntryCard(
                     entry = item,
-                    onUpdateClick = { updatingEntry = item }
+                    onUpdateClick = { updatingEntry = item },
+                    onAutoDeduceClick = {
+                        onAutoDeduceMoneyTrack?.invoke(selectedMarket, item)
+                    }
                 )
             }
         }
@@ -421,7 +538,8 @@ fun HistoryScreen(
 @Composable
 private fun HistoryEntryCard(
     entry: MarketHistoryEntry,
-    onUpdateClick: () -> Unit
+    onUpdateClick: () -> Unit,
+    onAutoDeduceClick: (() -> Unit)? = null
 ) {
     GlassCard(
         modifier = Modifier.fillMaxWidth(),
@@ -694,7 +812,40 @@ private fun HistoryEntryCard(
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold
                                 )
+                                Spacer(modifier = Modifier.width(6.dp))
                             }
+
+                            if (!entry.isHoliday && !entry.isPending) {
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = Color(0x33F59E0B),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, NeonGold),
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .clickable { onAutoDeduceClick?.invoke() }
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.FlashOn,
+                                            contentDescription = null,
+                                            tint = NeonGoldBright,
+                                            modifier = Modifier.size(12.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(2.dp))
+                                        Text(
+                                            text = "Deduce",
+                                            color = NeonGoldBright,
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(4.dp))
+                            }
+
                             IconButton(onClick = onUpdateClick, modifier = Modifier.size(28.dp)) {
                                 Icon(
                                     imageVector = Icons.Default.Edit,
@@ -705,6 +856,212 @@ private fun HistoryEntryCard(
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun LivePredictionCard(
+    prediction: MarketPrediction,
+    onUpdateClick: () -> Unit
+) {
+    GlassCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("live_today_prediction_card"),
+        backgroundColor = Color(0xEE0A1424),
+        borderColor = NeonCyan,
+        cornerRadius = 16.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp)
+        ) {
+            // Header: Live Badge + Today's Date + Pending Badge
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = Color(0x3306B6D4),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, NeonCyan)
+                    ) {
+                        Text(
+                            text = "🔴 LIVE TODAY",
+                            color = NeonCyanBright,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Black,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "${prediction.date} ( ${DateUtils.getDayOfWeek(prediction.date)} )",
+                        color = Color.White,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = Color(0x33F59E0B),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, NeonGold)
+                ) {
+                    Text(
+                        text = "⏳ RESULT PENDING",
+                        color = NeonGoldBright,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // 3 Brackets: OTC, Jodi, Panne
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // OTC Box
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color(0x22F59E0B),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x4DF59E0B)),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(text = "OTC", color = NeonCyan, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = prediction.otcList.joinToString(" "),
+                            color = NeonGoldBright,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Black,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                }
+
+                // Jodi Box
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color(0x2206B6D4),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x4D06B6D4)),
+                    modifier = Modifier.weight(1.1f)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(text = "Jodi", color = NeonGold, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = prediction.jodiList.take(4).joinToString(" "),
+                            color = NeonCyanBright,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                }
+
+                // Panne Box
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color(0x228B5CF6),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x4D8B5CF6)),
+                    modifier = Modifier.weight(1.3f)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(text = "Panne", color = Color(0xFFA78BFA), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = prediction.panneList.take(4).joinToString(" "),
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Previous Result Reference row
+            Surface(
+                shape = RoundedCornerShape(6.dp),
+                color = Color(0x19FFFFFF),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Base: [ ${prediction.lastOpenPana} - ${prediction.lastJodi} - ${prediction.lastClosePana} ]",
+                        color = Color.LightGray,
+                        fontSize = 10.sp,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Text(
+                        text = "Prev Entry: ${prediction.lastEntryDate}",
+                        color = Color.Gray,
+                        fontSize = 10.sp
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Result Pending row + Action Button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.HourglassEmpty,
+                        contentDescription = "Pending",
+                        tint = NeonCyan,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "Result  pending",
+                        color = NeonCyanBright,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color(0x33F59E0B),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, NeonGold),
+                    modifier = Modifier.clickable(onClick = onUpdateClick)
+                ) {
+                    Text(
+                        text = "( update result )",
+                        color = NeonGoldBright,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
                 }
             }
         }

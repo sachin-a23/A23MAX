@@ -55,7 +55,28 @@ data class MarketHistorySummary(
     val totalDays: Int
 )
 
+enum class MainFormulaMode(
+    val title: String,
+    val subtitle: String,
+    val badge: String,
+    val description: String
+) {
+    MAIN_1(
+        title = "MAIN 1",
+        subtitle = "Universal Pattern",
+        badge = "Pattern 1 (Universal)",
+        description = "Standard Active Universal Formula"
+    ),
+    MAIN_2(
+        title = "MAIN 2",
+        subtitle = "Audit Verified",
+        badge = "Pattern 2 (Audit High-Pass 🏆)",
+        description = "4-Market Audited High-Pass Formulas (Shridevi F117, Time F222, Milan F155, Kalyan F024)"
+    )
+}
+
 enum class FormulaEngineMode(val displayName: String, val formulaDescription: String) {
+    D7_M2_SERIES("A23 D7 M2 Master", "((((OpenPana(T-1) + Jodi(T-1)) × M) ÷ D) + A)"),
     A23_CLASSIC("A23 MAX Classic", "(Open Pana + Jodi) × Open Pana ÷ Divisor"),
     JODI_MULTIPLIER("Jodi Multiplier", "(Open Pana × Jodi) ÷ Divisor + Offset"),
     PANA_SUM_MATRIX("Pana Sum Matrix", "(Open Sum + Close Sum) × Multiplier ÷ Divisor"),
@@ -64,16 +85,19 @@ enum class FormulaEngineMode(val displayName: String, val formulaDescription: St
 }
 
 data class FormulaConfig(
-    val id: String = "a23_classic",
-    val name: String = "A23 MAX Standard Formula",
-    val mode: FormulaEngineMode = FormulaEngineMode.A23_CLASSIC,
-    val divisor: Int = 9,
-    val multiplierFactor: Int = 1,
+    val id: String = "d7_m2_universal",
+    val name: String = "A23 D7 M2 Universal Master",
+    val mode: FormulaEngineMode = FormulaEngineMode.D7_M2_SERIES,
+    val divisor: Int = 7,
+    val multiplierFactor: Int = 2,
     val additionOffset: Int = 0,
-    val targetOtcCount: Int = 4,
+    val targetOtcCount: Int = 4, // 2, 3, or 4 digits
+    val targetJodiCount: Int = 4, // 4, 6, or 8 jodis
+    val targetPanelCount: Int = 4, // 4, 6, or 8 panels
     val includeCutDigits: Boolean = false,
     val isCustom: Boolean = false,
-    val customNotes: String = "Calculated directly from last entry Open Pana and Jodi"
+    val isLocked: Boolean = true,
+    val customNotes: String = "((((OpenPana(T-1)+Jodi(T-1))×2)÷7)+0) - Fixed Universal Master Formula for Home & History"
 )
 
 data class BacktestDayResult(
@@ -85,7 +109,14 @@ data class BacktestDayResult(
     val actualCloseAnk: Int?,
     val actualJodiAnks: List<Int>,
     val predictedOtc: List<Int>,
+    val predictedJodis: List<String> = emptyList(),
+    val predictedPanels: List<String> = emptyList(),
     val winningDigits: List<Int>,
+    val winningJodis: List<String> = emptyList(),
+    val winningPanels: List<String> = emptyList(),
+    val isOtcPass: Boolean = false,
+    val isJodiPass: Boolean = false,
+    val isPanelPass: Boolean = false,
     val isPassed: Boolean,
     val isHoliday: Boolean,
     val statusText: String
@@ -100,6 +131,15 @@ data class BacktestSummary(
     val failedDays: Int,
     val holidayDays: Int,
     val accuracyPercentage: Float,
+    val otcCountTested: Int = 4,
+    val jodiCountTested: Int = 4,
+    val panelCountTested: Int = 4,
+    val otcPassedDays: Int = 0,
+    val otcAccuracyPercentage: Float = 0f,
+    val jodiPassedDays: Int = 0,
+    val jodiAccuracyPercentage: Float = 0f,
+    val panelPassedDays: Int = 0,
+    val panelAccuracyPercentage: Float = 0f,
     val currentStreak: Int,
     val maxStreak: Int,
     val topWinningDigits: List<Pair<Int, Int>> = emptyList(),
@@ -246,3 +286,120 @@ data class OfflineStorageInfo(
     val localFilePath: String = "Internal App Storage",
     val sourceName: String = "GitHub / Remote Sync"
 )
+
+enum class MoneyTrackUnit(val label: String, val symbol: String) {
+    COINS("Coins", "🪙"),
+    RUPEES("Rupees", "₹")
+}
+
+enum class MoneyTrackTimeframe(val label: String, val days: Int) {
+    THIS_WEEK("This Week (7D)", 7),
+    THIS_MONTH("This Month (30D)", 30),
+    LAST_15_DAYS("15 Days", 15),
+    CUSTOM_DAYS("Custom Days", -1),
+    ALL_TIME("All History", 9999)
+}
+
+data class SyncProgressDialogState(
+    val title: String = "Cloud Firebase Syncing...",
+    val subtitle: String = "Fetching live records & schema",
+    val currentStepIndex: Int = 1,
+    val totalSteps: Int = 4,
+    val currentStepTitle: String = "Connecting to Cloud Firestore (market-d7)...",
+    val progressPercent: Float = 0.25f,
+    val isDownloading: Boolean = true,
+    val isDone: Boolean = false,
+    val isError: Boolean = false,
+    val errorMessage: String? = null,
+    val sourceLabel: String = "Firebase Cloud Firestore"
+)
+
+data class FormulaMoneyTrackComparisonItem(
+    val formula: FormulaConfig,
+    val passRate: Float,
+    val passedDays: Int,
+    val failedDays: Int,
+    val totalDays: Int,
+    val netCoinsProfit: Long,
+    val winCyclesCount: Int,
+    val maxDrawdown: Long,
+    val predictedOtc: List<Int> = emptyList(),
+    val predictedJodis: List<String> = emptyList()
+)
+
+data class ExtractedChartRow(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    val date: String,
+    val dayOfWeek: String,
+    val openPana: String,
+    val jodi: String,
+    val closePana: String,
+    val isHoliday: Boolean = false,
+    val isValid: Boolean = true,
+    val confidence: Float = 0.95f
+)
+
+data class ChartScanResult(
+    val detectedMarketName: String = "",
+    val rows: List<ExtractedChartRow> = emptyList(),
+    val rawText: String = "",
+    val isAiProcessed: Boolean = false,
+    val success: Boolean = true,
+    val message: String = ""
+)
+
+data class CustomDateBacktestReport(
+    val marketName: String,
+    val formulaName: String,
+    val startDate: String,
+    val endDate: String,
+    val totalDays: Int,
+    val passedDays: Int,
+    val failedDays: Int,
+    val holidayDays: Int,
+    val winRate: Float,
+    val longestWinStreak: Int,
+    val maxLossStreak: Int,
+    val openOtcHits: Int,
+    val closeOtcHits: Int,
+    val jodiHits: Int,
+    val netCoinsProfit: Long,
+    val auditLog: List<DayBacktestAuditEntry>
+)
+
+data class DayBacktestAuditEntry(
+    val date: String,
+    val dayOfWeek: String,
+    val openPana: String,
+    val jodi: String,
+    val closePana: String,
+    val predictedOtc: List<Int>,
+    val winningOtcDigit: Int?,
+    val isPassed: Boolean,
+    val isFailed: Boolean,
+    val isHoliday: Boolean
+)
+
+data class SmartResultAlert(
+    val marketName: String,
+    val date: String,
+    val resultJodi: String,
+    val resultPanaOpen: String,
+    val winningOtcDigit: Int,
+    val formulaName: String,
+    val passedOtcList: List<Int>,
+    val timestamp: String = java.text.SimpleDateFormat("dd MMM yyyy, hh:mm a", java.util.Locale.ENGLISH).format(java.util.Date())
+)
+
+data class GoldenFormulaMarketRecommendation(
+    val marketName: String,
+    val topFormula: FormulaConfig,
+    val winRate: Float,
+    val passedDays: Int,
+    val totalDays: Int,
+    val netCoins: Long,
+    val rankBadge: String = "🥇 #1 GOLDEN",
+    val runnerUps: List<Pair<FormulaConfig, Float>> = emptyList()
+)
+
+
